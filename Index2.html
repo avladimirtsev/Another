@@ -5,23 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Счётчик прироста богатства</title>
     <style>
-        /* === ФОН: АНИМИРОВАННЫЙ ГРАДИЕНТ === */
         body {
             background: linear-gradient(-45deg, #0f172a, #1e3a5f, #00ff88, #0f172a);
             background-size: 400% 400%;
             animation: gradientShift 15s ease infinite;
-
             color: #00ff88;
             font-family: 'Courier New', monospace;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            justify-content: flex-start;
             align-items: center;
-            gap: 2rem;
-            flex-wrap: wrap;      /* чтобы на узких экранах переносились */
-            height: 100vh;
+            gap: 1.5rem;
+            min-height: 100vh;
+            min-height: 100dvh;
             margin: 0;
-            overflow: hidden;
+            padding: 3rem 1rem 2rem;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
+
+        body.modal-open { overflow: hidden; }
 
         @keyframes gradientShift {
             0%   { background-position: 0% 50%; }
@@ -29,45 +32,233 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Карточка счётчика */
         .counter-box {
             display: flex;
             flex-direction: column;
             align-items: center;
             background: rgba(15, 23, 42, 0.6);
-            padding: 2rem 3rem;
+            padding: 1.5rem 3rem;
             border-radius: 16px;
             backdrop-filter: blur(4px);
             min-width: 260px;
         }
 
-        /* Надпись над счётчиком */
         .counter-label {
             font-size: 1rem;
             letter-spacing: 2px;
             text-transform: uppercase;
             color: #94a3b8;
             margin-bottom: 0.5rem;
-            text-shadow: none;
         }
 
-        /* Сам счётчик */
         .counter {
             font-size: 2.2rem;
             text-shadow: 0 0 20px #00ff88;
             font-variant-numeric: tabular-nums;
+            word-break: break-all;
+            text-align: center;
         }
 
-        /* Второй счётчик — другим цветом, чтобы отличался */
-        .counter.blue {
-            color: #38bdf8;
-            text-shadow: 0 0 20px #38bdf8;
+        .counter.blue { color: #38bdf8; text-shadow: 0 0 20px #38bdf8; }
+        .counter.white { color: #FFFDD0; text-shadow: 0 0 20px #FFFDD0; }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            width: 100%;
+            max-width: 640px;
         }
+
+        .withdraw-btn {
+            flex: 1 1 260px;
+            padding: 1.2rem 2rem;
+            background: linear-gradient(135deg, #ff3d71, #e11d74);
+            color: #000;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(255, 61, 113, 0.5);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease, background 0.3s ease;
+        }
+        .withdraw-btn:hover { filter: brightness(1.1); }
+        .withdraw-btn:active { transform: scale(0.97); }
+        .withdraw-btn:disabled {
+            background: linear-gradient(135deg, #64748b, #475569);
+            color: #1e293b;
+            cursor: not-allowed;
+            box-shadow: none; filter: none; transform: none;
+        }
+
+        .finish-btn {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
+        }
+        .finish-btn:hover { filter: brightness(1.1); }
+        .finish-btn:disabled {
+            background: linear-gradient(135deg, #334155, #1e293b);
+            color: #94a3b8;
+            box-shadow: none; filter: none; transform: none;
+        }
+
+        /* ===== КНОПКА "ПОЛУЧИТЬ ВАУЧЕР" ===== */
+        .voucher-btn {
+            display: none;
+            width: 100%;
+            max-width: 640px;
+            padding: 1.1rem 2rem;
+            background: linear-gradient(135deg, #facc15, #f59e0b);
+            color: #1e293b;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(250, 204, 21, 0.45);
+            transition: transform 0.15s ease, filter 0.15s ease;
+            animation: voucherIn 0.3s ease;
+        }
+        .voucher-btn.show { display: block; }
+        .voucher-btn:hover { filter: brightness(1.08); }
+        .voucher-btn:active { transform: scale(0.97); }
+
+        @keyframes voucherIn {
+            from { transform: translateY(-8px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+
+        .news-box {
+            min-width: 260px;
+            max-width: 300px;
+            max-height: 300px;
+            overflow-y: auto;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            backdrop-filter: blur(4px);
+            text-align: left;
+        }
+
+        .news-title {
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .news-list {
+            list-style: none;
+            padding: 0; margin: 0;
+            display: flex; flex-direction: column; gap: 0.9rem;
+        }
+
+        .news-item { color: #cbd5e1; font-size: 0.9rem; line-height: 1.45; }
+        .news-item .news-date {
+            display: block; color: #64748b; font-size: 0.75rem;
+            letter-spacing: 1px; margin-bottom: 0.2rem;
+        }
+        .news-item .news-text { color: #e2e8f0; }
+        .news-item.new .news-text { color: #00ff88; }
+
+        /* ===== МОДАЛЬНОЕ ОКНО ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(6px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            z-index: 999;
+        }
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            border-radius: 20px;
+            padding: 2rem 2rem 1.5rem;
+            max-width: 560px;
+            width: 100%;
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.35);
+            color: #e2e8f0;
+            font-size: 1rem;
+            line-height: 1.55;
+            animation: modalIn 0.25s ease;
+        }
+        @keyframes modalIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+
+        .modal-text {
+            margin-bottom: 1.5rem;
+        }
+        .modal-text .accent { color: #00ff88; }
+
+        .modal-question {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #a78bfa;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .modal-actions button {
+            flex: 1 1 120px;
+            padding: 0.9rem 1.5rem;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+        .modal-actions button:active { transform: scale(0.97); }
+
+        .modal-yes {
+            background: linear-gradient(135deg, #ff3d71, #e11d74);
+            color: #000;
+            box-shadow: 0 0 20px rgba(255, 61, 113, 0.5);
+        }
+        .modal-yes:hover { filter: brightness(1.1); }
+
+        .modal-no {
+            background: linear-gradient(135deg, #334155, #1e293b);
+            color: #cbd5e1;
+            box-shadow: 0 0 20px rgba(51, 65, 85, 0.5);
+        }
+        .modal-no:hover { filter: brightness(1.2); }
     </style>
 </head>
 <body>
     <div class="counter-box">
-        <div class="counter-label">Ваш счёт</div>
+        <div class="counter-label">Богатство Страны</div>
         <div class="counter" id="counter1">0</div>
     </div>
 
@@ -76,42 +267,486 @@
         <div class="counter blue" id="counter2">0</div>
     </div>
 
+    <div class="counter-box">
+        <div class="counter-label">Ваш Базовый Доход</div>
+        <div class="counter white" id="counter3">0</div>
+    </div>
+
+    <div class="btn-row">
+        <button class="withdraw-btn" id="withdrawBtn">Получить долю Богатства Страны</button>
+        <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход и завершить участие</button>
+    </div>
+
+    <!-- ===== КНОПКА "ПОЛУЧИТЬ ВАУЧЕР" ===== -->
+    <button class="voucher-btn" id="voucherBtn"></button>
+
+    <div class="news-box">
+        <div class="news-title">Новости проекта</div>
+        <ul class="news-list" id="newsList"></ul>
+    </div>
+
+    <!-- ===== МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ===== -->
+    <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <div class="modal">
+            <div class="modal-text">
+                Поздравляем! Вы повторяете путь <span class="accent">34% россиян</span>,
+                которые продали за «бутылку водки» свой ваучер в 1994 году и лишились
+                навсегда права на долю собственности бывшего СССР. Через некоторое время Вы увидите
+                вокруг себя новых миллионеров, которые продолжили получать долю от
+                Богатства и не нажали кнопку.
+            </div>
+            <div class="modal-question" id="confirmTitle">Нажимаем?</div>
+            <div class="modal-actions">
+                <button class="modal-yes" id="modalYes">Да</button>
+                <button class="modal-no"  id="modalNo">Нет</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // === КЛЮЧИ LOCALSTORAGE ===
+        const LS_KEYS = {
+            withdrawn: "withdrawn",
+            finishValue: "finishValue",
+            cooldownUntil: "cooldownUntil"
+        };
+
         // === НАСТРОЙКИ СЧЁТЧИКОВ ===
         const counters = [
             {
                 el: document.getElementById("counter1"),
-                baseValue: 2576,
-                startDate: new Date("2026-10-13T00:00:00+03:00").getTime(),
-                perSecond: 0.0011925926,
-                digits: 4
+                baseValue: 2680,
+                startDate: new Date("2026-10-15T00:00:00+03:00").getTime(),
+                perSecond: 0.0012407407,
+                digits: 4,
+                active: true,
+                id: "counter1"
             },
             {
                 el: document.getElementById("counter2"),
-                baseValue: 143000000,                 // своё стартовое значение
-                startDate: new Date("2026-10-13T00:00:00+03:00").getTime(),
-                perSecond: -1,                // своя скорость
-                digits: 2
+                baseValue: 143000000,
+                startDate: new Date("2026-10-14T00:00:00+03:00").getTime(),
+                perSecond: -0.011,
+                digits: 0,
+                active: true,
+                id: "counter2"
+            },
+            {
+                el: document.getElementById("counter3"),
+                baseValue: 0,
+                startDate: null,
+                perSecond: 0.00000000000867651,
+                digits: 10,
+                active: false,
+                id: "counter3"
             }
         ];
 
-        function update() {
-            const now = Date.now();
+        const counter3 = counters[2];
 
-            for (const c of counters) {
-                const secondsPassed = (now - c.startDate) / 1000;
-                const current = c.baseValue + c.perSecond * secondsPassed;
+        // Длительность периода охлаждения (10 минут)
+        const COOLDOWN_MS = 10 * 60 * 1000;
 
-                c.el.textContent = current.toLocaleString("ru-RU", {
-                    minimumFractionDigits: 4,
-                    maximumFractionDigits: 4
-                });
+        // ============================================================
+        // СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ
+        // ============================================================
+        function saveCounterState(c) {
+            if (!c.id) return;
+            try {
+                localStorage.setItem(c.id + "_state", JSON.stringify({
+                    baseValue: c.baseValue,
+                    startDate: c.startDate,
+                    perSecond: c.perSecond,
+                    active: c.active
+                }));
+            } catch (e) {
+                console.warn("Не удалось сохранить состояние " + c.id, e);
             }
-
-            requestAnimationFrame(update);
         }
 
+        function loadCounterState(c) {
+            if (!c.id) return;
+            const raw = localStorage.getItem(c.id + "_state");
+            if (!raw) return;
+            try {
+                const s = JSON.parse(raw);
+                if (typeof s.baseValue === "number") c.baseValue = s.baseValue;
+                if (typeof s.perSecond === "number") c.perSecond = s.perSecond;
+                if (typeof s.active === "boolean") c.active = s.active;
+                if (s.startDate === null || typeof s.startDate === "number") {
+                    c.startDate = s.startDate;
+                }
+            } catch (e) {
+                console.warn("Не удалось восстановить состояние " + c.id, e);
+            }
+        }
+
+        // ============================================================
+        // ТЕКУЩЕЕ ЗНАЧЕНИЕ СЧЁТЧИКА
+        // ============================================================
+        function getCurrentValue(c) {
+            if (!c.active || c.startDate === null) return c.baseValue;
+            const secondsPassed = (Date.now() - c.startDate) / 1000;
+            return c.baseValue + c.perSecond * secondsPassed;
+        }
+
+        // ============================================================
+        // ФУНКЦИЯ СМЕНЫ СКОРОСТИ
+        // ============================================================
+        function changeSpeed(c, newSpeed) {
+            if (!c.active || c.startDate === null) {
+                c.perSecond = newSpeed;
+                saveCounterState(c);
+                return;
+            }
+
+            const now = Date.now();
+            const secondsPassed = (now - c.startDate) / 1000;
+            c.baseValue = c.baseValue + c.perSecond * secondsPassed;
+            c.startDate = now;
+            c.perSecond = newSpeed;
+
+            saveCounterState(c);
+        }
+
+        // ============================================================
+        // ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ — ДО первого update()
+        // ============================================================
+        loadCounterState(counter1);
+        loadCounterState(counter2);
+        loadCounterState(counter3);
+
+        if (localStorage.getItem(LS_KEYS.withdrawn) === "1") {
+            if (!counter3.active) {
+                counter3.active = true;
+            }
+            if (counter3.startDate === null) {
+                counter3.startDate = Date.now();
+            }
+            saveCounterState(counter3);
+        }
+
+        // ============================================================
+        // ОБНОВЛЕНИЕ СЧЁТЧИКОВ
+        // ============================================================
+        function formatNumber(value, digits) {
+            return value.toLocaleString("ru-RU", {
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits
+            });
+        }
+
+        function update() {
+            for (const c of counters) {
+                if (c.active === true && c.startDate === null) {
+                    c.startDate = Date.now();
+                    saveCounterState(c);
+                }
+
+                if (c.active === false || c.startDate === null) {
+                    c.el.textContent = formatNumber(c.baseValue, c.digits);
+                    continue;
+                }
+
+                c.el.textContent = formatNumber(getCurrentValue(c), c.digits);
+            }
+        }
+
+        setInterval(update, 250);
         update();
+
+        // ============================================================
+        // ЭЛЕМЕНТЫ УПРАВЛЕНИЯ
+        // ============================================================
+        const btn = document.getElementById("withdrawBtn");
+        const finishBtn = document.getElementById("finishBtn");
+        const voucherBtn = document.getElementById("voucherBtn");
+        const modal = document.getElementById("confirmModal");
+        const modalYes = document.getElementById("modalYes");
+        const modalNo = document.getElementById("modalNo");
+
+        // ============================================================
+        // ПЕРИОД ОХЛАЖДЕНИЯ
+        // ============================================================
+        function getCooldownUntil() {
+            const raw = localStorage.getItem(LS_KEYS.cooldownUntil);
+            if (!raw) return 0;
+            const v = parseInt(raw, 10);
+            return isNaN(v) ? 0 : v;
+        }
+
+        function setCooldownUntil(ts) {
+            if (ts && ts > Date.now()) {
+                localStorage.setItem(LS_KEYS.cooldownUntil, String(ts));
+            } else {
+                localStorage.removeItem(LS_KEYS.cooldownUntil);
+            }
+        }
+
+        function formatCooldown(msLeft) {
+            const totalSec = Math.max(0, Math.ceil(msLeft / 1000));
+            const m = Math.floor(totalSec / 60);
+            const s = totalSec % 60;
+            return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+        }
+
+        function cooldownRemaining() {
+            return getCooldownUntil() - Date.now();
+        }
+
+        // ============================================================
+        // СОСТОЯНИЯ ПЕРВОЙ КНОПКИ
+        // ============================================================
+        function refreshWithdrawBtn() {
+            const left = cooldownRemaining();
+            if (left > 0) {
+                btn.textContent = "Доступно через " + formatCooldown(left);
+                btn.disabled = true;
+            } else {
+                if (getCooldownUntil() !== 0) setCooldownUntil(0);
+                if (localStorage.getItem(LS_KEYS.withdrawn) === "1") {
+                    setWithdrawBtnActive();
+                } else {
+                    setWithdrawBtnDefault();
+                }
+            }
+        }
+
+        function setWithdrawBtnDefault() {
+            btn.textContent = "Получить долю Богатства Страны";
+            btn.disabled = false;
+        }
+
+        function setWithdrawBtnActive() {
+            btn.textContent = "Вам уже поступает доля Богатства Страны!";
+            btn.disabled = true;
+        }
+
+        // ============================================================
+        // СОСТОЯНИЕ ВТОРОЙ КНОПКИ
+        // ============================================================
+        const FINISH_DEFAULT_TEXT = "Вывести свой доход и завершить участие";
+
+        function setFinishBtnDefault(enabled) {
+            finishBtn.textContent = FINISH_DEFAULT_TEXT;
+            finishBtn.disabled = !enabled;
+        }
+
+        function setFinishBtnFrozen(value) {
+            finishBtn.textContent = "Ваша доля равна " + formatNumber(value, counter3.digits);
+            finishBtn.disabled = true;
+        }
+
+        // ============================================================
+        // КНОПКА "ПОЛУЧИТЬ ВАУЧЕР"
+        // ============================================================
+        function showVoucherBtn(value) {
+            voucherBtn.textContent = "Получить ваучер на сумму " + formatNumber(value, counter3.digits);
+            voucherBtn.classList.add("show");
+            voucherBtn.disabled = false;
+        }
+
+        function hideVoucherBtn() {
+            voucherBtn.classList.remove("show");
+            voucherBtn.textContent = "";
+        }
+
+        // ============================================================
+        // ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ КНОПОК ПРИ ЗАГРУЗКЕ
+        // ============================================================
+        function restoreFinishBtn() {
+            const finishValueRaw = localStorage.getItem(LS_KEYS.finishValue);
+            const isAccumulating = localStorage.getItem(LS_KEYS.withdrawn) === "1";
+
+            // Идёт новый цикл накопления — вторая кнопка активна, ваучер скрыт
+            if (isAccumulating) {
+                setFinishBtnDefault(true);
+                hideVoucherBtn();
+                return;
+            }
+
+            // Есть зафиксированное значение — показываем его и ваучер
+            if (finishValueRaw !== null) {
+                const finishValue = parseFloat(finishValueRaw);
+                if (!isNaN(finishValue)) {
+                    setFinishBtnFrozen(finishValue);
+                    showVoucherBtn(finishValue);
+                    return;
+                }
+            }
+
+            // Свежая сессия — вторая кнопка неактивна, ваучер скрыт
+            setFinishBtnDefault(false);
+            hideVoucherBtn();
+        }
+
+        // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ КНОПОК
+        // ============================================================
+        refreshWithdrawBtn();
+        restoreFinishBtn();
+
+        // Тикер: раз в секунду обновляем надпись на первой кнопке, если идёт кулдаун
+        setInterval(() => {
+            if (cooldownRemaining() > 0) {
+                refreshWithdrawBtn();
+                return;
+            }
+
+            if (btn.disabled && btn.textContent.startsWith("Доступно через")) {
+                if (localStorage.getItem(LS_KEYS.withdrawn) === "1") {
+                    setWithdrawBtnActive();
+                } else {
+                    setWithdrawBtnDefault();
+                }
+            }
+        }, 1000);
+
+        // ============================================================
+        // КЛИК ПО ПЕРВОЙ КНОПКЕ — старт нового цикла
+        // ============================================================
+        btn.addEventListener("click", () => {
+            if (btn.disabled) return;
+            if (cooldownRemaining() > 0) return;
+
+            setWithdrawBtnActive();
+
+            counter3.baseValue = 0;
+            counter3.startDate = Date.now();
+            counter3.active = true;
+
+            localStorage.setItem(LS_KEYS.withdrawn, "1");
+            saveCounterState(counter3);
+
+            // Оживляем вторую кнопку и скрываем кнопку ваучера
+            localStorage.removeItem(LS_KEYS.finishValue);
+            setFinishBtnDefault(true);
+            hideVoucherBtn();
+        });
+
+        // ============================================================
+        // МОДАЛЬНОЕ ОКНО
+        // ============================================================
+        function openConfirmModal() {
+            modal.classList.add("show");
+            document.body.classList.add("modal-open");
+            modalNo.focus();
+        }
+        function closeConfirmModal() {
+            modal.classList.remove("show");
+            document.body.classList.remove("modal-open");
+        }
+
+        // ============================================================
+        // КЛИК ПО ВТОРОЙ КНОПКЕ
+        // ============================================================
+        finishBtn.addEventListener("click", () => {
+            if (finishBtn.disabled) return;
+
+            const current = getCurrentValue(counter3);
+            if (current <= 0) return;
+
+            openConfirmModal();
+        });
+
+        // ============================================================
+        // СЦЕНАРИЙ ВЫВОДА
+        // ============================================================
+        function performFinish() {
+            // 1. Фиксируем текущее значение counter3
+            const finalValue = getCurrentValue(counter3);
+
+            // 2. Обнуляем и останавливаем counter3
+            counter3.baseValue = 0;
+            counter3.startDate = null;
+            counter3.active = false;
+            saveCounterState(counter3);
+            counter3.el.textContent = formatNumber(0, counter3.digits);
+
+            // 3. Возвращаем первую кнопку в исходное состояние
+            //    и ставим её на период охлаждения
+            localStorage.removeItem(LS_KEYS.withdrawn);
+            setCooldownUntil(Date.now() + COOLDOWN_MS);
+            refreshWithdrawBtn();
+
+            // 4. Фиксируем значение на второй кнопке
+            localStorage.setItem(LS_KEYS.finishValue, String(finalValue));
+            setFinishBtnFrozen(finalValue);
+
+            // 5. Показываем кнопку ваучера под основной парой кнопок
+            showVoucherBtn(finalValue);
+        }
+
+        // "Нет" — просто закрываем окно
+        modalNo.addEventListener("click", () => {
+            closeConfirmModal();
+        });
+
+        // "Да" — закрываем окно и запускаем сценарий
+        modalYes.addEventListener("click", () => {
+            closeConfirmModal();
+            performFinish();
+        });
+
+        // Клик по затемнённому фону — как "Нет"
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) closeConfirmModal();
+        });
+
+        // Esc — как "Нет"
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && modal.classList.contains("show")) {
+                closeConfirmModal();
+            }
+        });
+
+        // ============================================================
+        // КЛИК ПО КНОПКЕ ВАУЧЕРА (заглушка — логику добавите сами)
+        // ============================================================
+        voucherBtn.addEventListener("click", () => {
+            // TODO: обработка получения ваучера
+            console.log("Получен ваучер на сумму", voucherBtn.textContent);
+        });
+
+        // ============================================================
+        // ДЕМО: смена скорости counter3
+        // ============================================================
+        // changeSpeed(counter3, 0.00000000000902616);
+
+        // ============================================================
+        // НОВОСТИ
+        // ============================================================
+        const news = [
+            { date: "15.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 4%⚡️.", isNew: true },
+            { date: "14.10.2026", text: "Подключение личного счета."},
+            { date: "13.10.2026", text: "Подключение новой страны - Россия🇷🇺." },
+            { date: "13.10.2026", text: "⚡️Запуск проекта. Владимир Владимирович передал Проекту свои 1000🪙 и пожелал роста🌱" }
+        ];
+
+        function renderNews() {
+            const list = document.getElementById("newsList");
+            list.innerHTML = "";
+
+            if (!news.length) {
+                const empty = document.createElement("li");
+                empty.className = "news-item";
+                empty.innerHTML = `<span class="news-text" style="color:#64748b">Пока новостей нет</span>`;
+                list.appendChild(empty);
+                return;
+            }
+
+            for (const item of news) {
+                const li = document.createElement("li");
+                li.className = "news-item" + (item.isNew ? " new" : "");
+                li.innerHTML = `
+                    <span class="news-date">${item.date}</span>
+                    <span class="news-text">${item.text}</span>
+                `;
+                list.appendChild(li);
+            }
+        }
+
+        renderNews();
     </script>
 </body>
 </html>
