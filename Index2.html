@@ -174,6 +174,65 @@
         .news-item .news-text { color: #e2e8f0; }
         .news-item.new .news-text { color: #00ff88; }
 
+        /* ===== БЛОК "О ПРОЕКТЕ" ===== */
+        .about-box {
+            max-width: 640px;
+            max-height: none;
+        }
+
+        .about-content {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+
+        .about-content p {
+            margin: 0 0 0.9rem;
+        }
+
+        .about-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .about-content strong {
+            color: #00ff88;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .about-content ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .about-content li {
+            position: relative;
+            padding-left: 1.2rem;
+            color: #e2e8f0;
+        }
+
+        .about-content li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #38bdf8;
+            font-weight: bold;
+        }
+
+        .about-content .accent {
+            color: #00ff88;
+        }
+
+        .about-content hr {
+            border: none;
+            border-top: 1px solid rgba(0, 255, 136, 0.15);
+            margin: 1rem 0;
+        }
+
         /* ===== МОДАЛЬНОЕ ОКНО ===== */
         .modal-overlay {
             position: fixed;
@@ -285,17 +344,22 @@
         <ul class="news-list" id="newsList"></ul>
     </div>
 
+    <!-- ===== БЛОК "О ПРОЕКТЕ" ===== -->
+    <div class="news-box about-box">
+        <div class="news-title">О проекте</div>
+        <div class="about-content" id="aboutContent"></div>
+    </div>
+
     <!-- ===== МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ===== -->
     <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <div class="modal">
             <div class="modal-text">
-                Поздравляем! Вы повторяете путь <span class="accent">34% россиян</span>,
-                которые продали за «бутылку водки» свой ваучер в 1994 году и лишились
-                навсегда права на долю собственности бывшего СССР. Через некоторое время Вы увидите
-                вокруг себя новых миллионеров, которые продолжили получать долю от
-                Богатства и не нажали кнопку.
+                В 1994 году <span class="accent">34% россиян</span>,
+                продали за «бутылку водки» свой ваучер и навсегда лишились
+                права на долю собственности бывшего СССР. Вы можете продолжить
+                получать свою долю Богатства.
             </div>
-            <div class="modal-question" id="confirmTitle">Нажимаем?</div>
+            <div class="modal-question" id="confirmTitle">Прекращаете получать свою долю?</div>
             <div class="modal-actions">
                 <button class="modal-yes" id="modalYes">Да</button>
                 <button class="modal-no"  id="modalNo">Нет</button>
@@ -335,7 +399,8 @@
                 el: document.getElementById("counter3"),
                 baseValue: 0,
                 startDate: null,
-                perSecond: 0.00000000000867651,
+                // Скорость из расчета 100 в сутки
+                perSecond: 0.000000000008093767,
                 digits: 10,
                 active: false,
                 id: "counter3"
@@ -717,7 +782,8 @@
         // НОВОСТИ
         // ============================================================
         const news = [
-            { date: "15.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 4%⚡️.", isNew: true },
+            { date: "16.10.2026", text: "🪙 42,2 трлн.рублей - Капитализация рынка акций РФ. Нам есть куда расти.", isNew: true },
+            { date: "15.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 4%⚡️."},
             { date: "14.10.2026", text: "Подключение личного счета."},
             { date: "13.10.2026", text: "Подключение новой страны - Россия🇷🇺." },
             { date: "13.10.2026", text: "⚡️Запуск проекта. Владимир Владимирович передал Проекту свои 1000🪙 и пожелал роста🌱" }
@@ -747,6 +813,74 @@
         }
 
         renderNews();
+
+        // ============================================================
+        // БЛОК "О ПРОЕКТЕ"
+        // ============================================================
+        // Правила форматирования:
+        //   { type: "p",  html: "..." }           — абзац (можно <strong>, <span class="accent">)
+        //   { type: "ul", items: ["...", "..."] } — маркированный список
+        //   { type: "hr" }                        — тонкий разделитель
+        //
+        // Чтобы добавить/поправить текст — просто отредактируйте этот массив.
+
+        const aboutText = [
+            {
+                type: "p",
+                html: '<strong>Цель проекта</strong> — 💡 Стремление к счастью.'
+            },
+            {
+                type: "p",
+                html: '<strong>Правила:</strong>'
+            },
+            {
+                type: "ul",
+                items: [
+                    "Каждый имеет право быть счастливым.",
+                    "Каждый имеет право на Базовый Доход.",
+                    "Ваша доля начисляется автоматически после активации личного счёта.",
+                    "Вы можете вывести свою долю.",
+                    "После вывода доли действует период охлаждения."
+                ]
+            },
+            { type: "hr" },
+            {
+                type: "p",
+                html: '<strong>Условия:</strong> Безусловный Базовый Доход выплачивается всем, а не только нуждающимся.Не требуется проверки доходов или обязанности поиска работы. Это постоянная выплата, а не разовая акция. '
+            },
+            {
+                type: "p",
+                html: '<strong>Важно:</strong> Каждый имеет право быть счастливым. Мы помогаем Вам хотя бы немного не переживать за будущее. '
+            }
+        ];
+
+        function renderAbout() {
+            const box = document.getElementById("aboutContent");
+            if (!box) return;
+            box.innerHTML = "";
+
+            for (const block of aboutText) {
+                if (block.type === "p") {
+                    const p = document.createElement("p");
+                    p.innerHTML = block.html;
+                    box.appendChild(p);
+
+                } else if (block.type === "ul") {
+                    const ul = document.createElement("ul");
+                    for (const item of block.items) {
+                        const li = document.createElement("li");
+                        li.textContent = item;
+                        ul.appendChild(li);
+                    }
+                    box.appendChild(ul);
+
+                } else if (block.type === "hr") {
+                    box.appendChild(document.createElement("hr"));
+                }
+            }
+        }
+
+        renderAbout();
     </script>
 </body>
 </html>
