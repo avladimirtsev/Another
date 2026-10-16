@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Счётчик прироста богатства</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            background: linear-gradient(-45deg, #0f172a, #1e3a5f, #00ff88, #0f172a);
-            background-size: 400% 400%;
-            animation: gradientShift 15s ease infinite;
-            color: #00ff88;
+            background: var(--tg-theme-bg-color, #0f172a);
+            color: var(--tg-theme-text-color, #00ff88);
             font-family: 'Courier New', monospace;
             display: flex;
             flex-direction: column;
@@ -19,24 +19,18 @@
             min-height: 100vh;
             min-height: 100dvh;
             margin: 0;
-            padding: 3rem 1rem 2rem;
+            padding: 2rem 1rem 2rem;
             overflow-x: hidden;
             overflow-y: auto;
         }
 
         body.modal-open { overflow: hidden; }
 
-        @keyframes gradientShift {
-            0%   { background-position: 0% 50%; }
-            50%  { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
         .counter-box {
             display: flex;
             flex-direction: column;
             align-items: center;
-            background: rgba(15, 23, 42, 0.6);
+            background: var(--tg-theme-secondary-bg-color, rgba(15, 23, 42, 0.6));
             padding: 1.5rem 3rem;
             border-radius: 16px;
             backdrop-filter: blur(4px);
@@ -47,7 +41,7 @@
             font-size: 1rem;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: #94a3b8;
+            color: var(--tg-theme-hint-color, #94a3b8);
             margin-bottom: 0.5rem;
         }
 
@@ -143,7 +137,7 @@
             max-height: 300px;
             overflow-y: auto;
             width: 100%;
-            background: rgba(15, 23, 42, 0.6);
+            background: var(--tg-theme-secondary-bg-color, rgba(15, 23, 42, 0.6));
             padding: 1.5rem 2rem;
             border-radius: 16px;
             backdrop-filter: blur(4px);
@@ -154,7 +148,7 @@
             font-size: 0.9rem;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: #94a3b8;
+            color: var(--tg-theme-hint-color, #94a3b8);
             margin-bottom: 1rem;
             padding-bottom: 0.6rem;
             border-bottom: 1px solid rgba(0, 255, 136, 0.2);
@@ -248,7 +242,7 @@
         .modal-overlay.show { display: flex; }
 
         .modal {
-            background: rgba(15, 23, 42, 0.95);
+            background: var(--tg-theme-secondary-bg-color, rgba(15, 23, 42, 0.95));
             border: 1px solid rgba(139, 92, 246, 0.4);
             border-radius: 20px;
             padding: 2rem 2rem 1.5rem;
@@ -368,6 +362,34 @@
     </div>
 
     <script>
+        // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ TELEGRAM MINI APP
+        // ============================================================
+        const tg = window.Telegram?.WebApp;
+
+        // Переменная для идентификатора пользователя Telegram
+        let USER_ID = null;
+        let telegramUser = null;
+
+        if (tg) {
+            // Сообщаем Telegram, что приложение загружено
+            tg.ready();
+            // Разворачиваем на весь экран
+            tg.expand();
+
+            // Получаем данные пользователя (без всякой авторизации!)
+            telegramUser = tg.initDataUnsafe?.user;
+
+            if (telegramUser) {
+                USER_ID = "tg_" + telegramUser.id;
+                console.log("Telegram user:", telegramUser.first_name, telegramUser.id);
+            } else {
+                console.warn("Открыто вне Telegram. Используем локальный аккаунт.");
+            }
+        } else {
+            console.warn("Telegram WebApp SDK не загружен. Открыто вне Telegram.");
+        }
+
         // === КЛЮЧИ LOCALSTORAGE ===
         const LS_KEYS = {
             withdrawn: "withdrawn",
@@ -413,12 +435,30 @@
         const COOLDOWN_MS = 10 * 60 * 1000;
 
         // ============================================================
+        // ПРОСТРАНСТВО ИМЁН ДЛЯ LOCALSTORAGE
+        // ============================================================
+        function userKey(key) {
+            // Если открыто в Telegram — используем Telegram ID
+            if (USER_ID) {
+                return USER_ID + "_" + key;
+            }
+            // Иначе — обычный (не-ID) ключ. Локальная авторизация в этом коде больше не используется.
+            return key;
+        }
+
+        const userStorage = {
+            getItem(k)    { return localStorage.getItem(userKey(k)); },
+            setItem(k, v) { return localStorage.setItem(userKey(k), v); },
+            removeItem(k) { return localStorage.removeItem(userKey(k)); }
+        };
+
+        // ============================================================
         // СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ
         // ============================================================
         function saveCounterState(c) {
             if (!c.id) return;
             try {
-                localStorage.setItem(c.id + "_state", JSON.stringify({
+                userStorage.setItem(c.id + "_state", JSON.stringify({
                     baseValue: c.baseValue,
                     startDate: c.startDate,
                     perSecond: c.perSecond,
@@ -431,7 +471,7 @@
 
         function loadCounterState(c) {
             if (!c.id) return;
-            const raw = localStorage.getItem(c.id + "_state");
+            const raw = userStorage.getItem(c.id + "_state");
             if (!raw) return;
             try {
                 const s = JSON.parse(raw);
@@ -481,7 +521,7 @@
         loadCounterState(counter2);
         loadCounterState(counter3);
 
-        if (localStorage.getItem(LS_KEYS.withdrawn) === "1") {
+        if (userStorage.getItem(LS_KEYS.withdrawn) === "1") {
             if (!counter3.active) {
                 counter3.active = true;
             }
@@ -534,7 +574,7 @@
         // ПЕРИОД ОХЛАЖДЕНИЯ
         // ============================================================
         function getCooldownUntil() {
-            const raw = localStorage.getItem(LS_KEYS.cooldownUntil);
+            const raw = userStorage.getItem(LS_KEYS.cooldownUntil);
             if (!raw) return 0;
             const v = parseInt(raw, 10);
             return isNaN(v) ? 0 : v;
@@ -542,9 +582,9 @@
 
         function setCooldownUntil(ts) {
             if (ts && ts > Date.now()) {
-                localStorage.setItem(LS_KEYS.cooldownUntil, String(ts));
+                userStorage.setItem(LS_KEYS.cooldownUntil, String(ts));
             } else {
-                localStorage.removeItem(LS_KEYS.cooldownUntil);
+                userStorage.removeItem(LS_KEYS.cooldownUntil);
             }
         }
 
@@ -569,7 +609,7 @@
                 btn.disabled = true;
             } else {
                 if (getCooldownUntil() !== 0) setCooldownUntil(0);
-                if (localStorage.getItem(LS_KEYS.withdrawn) === "1") {
+                if (userStorage.getItem(LS_KEYS.withdrawn) === "1") {
                     setWithdrawBtnActive();
                 } else {
                     setWithdrawBtnDefault();
@@ -620,8 +660,8 @@
         // ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ КНОПОК ПРИ ЗАГРУЗКЕ
         // ============================================================
         function restoreFinishBtn() {
-            const finishValueRaw = localStorage.getItem(LS_KEYS.finishValue);
-            const isAccumulating = localStorage.getItem(LS_KEYS.withdrawn) === "1";
+            const finishValueRaw = userStorage.getItem(LS_KEYS.finishValue);
+            const isAccumulating = userStorage.getItem(LS_KEYS.withdrawn) === "1";
 
             // Идёт новый цикл накопления — вторая кнопка активна, ваучер скрыт
             if (isAccumulating) {
@@ -659,7 +699,7 @@
             }
 
             if (btn.disabled && btn.textContent.startsWith("Доступно через")) {
-                if (localStorage.getItem(LS_KEYS.withdrawn) === "1") {
+                if (userStorage.getItem(LS_KEYS.withdrawn) === "1") {
                     setWithdrawBtnActive();
                 } else {
                     setWithdrawBtnDefault();
@@ -680,11 +720,11 @@
             counter3.startDate = Date.now();
             counter3.active = true;
 
-            localStorage.setItem(LS_KEYS.withdrawn, "1");
+            userStorage.setItem(LS_KEYS.withdrawn, "1");
             saveCounterState(counter3);
 
             // Оживляем вторую кнопку и скрываем кнопку ваучера
-            localStorage.removeItem(LS_KEYS.finishValue);
+            userStorage.removeItem(LS_KEYS.finishValue);
             setFinishBtnDefault(true);
             hideVoucherBtn();
         });
@@ -730,12 +770,12 @@
 
             // 3. Возвращаем первую кнопку в исходное состояние
             //    и ставим её на период охлаждения
-            localStorage.removeItem(LS_KEYS.withdrawn);
+            userStorage.removeItem(LS_KEYS.withdrawn);
             setCooldownUntil(Date.now() + COOLDOWN_MS);
             refreshWithdrawBtn();
 
             // 4. Фиксируем значение на второй кнопке
-            localStorage.setItem(LS_KEYS.finishValue, String(finalValue));
+            userStorage.setItem(LS_KEYS.finishValue, String(finalValue));
             setFinishBtnFrozen(finalValue);
 
             // 5. Показываем кнопку ваучера под основной парой кнопок
@@ -817,13 +857,6 @@
         // ============================================================
         // БЛОК "О ПРОЕКТЕ"
         // ============================================================
-        // Правила форматирования:
-        //   { type: "p",  html: "..." }           — абзац (можно <strong>, <span class="accent">)
-        //   { type: "ul", items: ["...", "..."] } — маркированный список
-        //   { type: "hr" }                        — тонкий разделитель
-        //
-        // Чтобы добавить/поправить текст — просто отредактируйте этот массив.
-
         const aboutText = [
             {
                 type: "p",
