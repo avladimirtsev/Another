@@ -440,8 +440,20 @@
         const LS_KEYS = {
             withdrawn: "withdrawn",
             finishValue: "finishValue",
-            cooldownUntil: "cooldownUntil"
+            cooldownUntil: "cooldownUntil",
+            counter3SpeedVersion: "counter3_speed_version"
         };
+
+        // ============================================================
+        // НАСТРОЙКА СКОРОСТИ COUNTER3
+        // ============================================================
+        // Чтобы изменить скорость прироста "Ваш Базовый Доход":
+        //   1) поменяйте значение COUNTER3_NEW_SPEED
+        //   2) увеличьте COUNTER3_SPEED_VERSION (например "v1" -> "v2")
+        // Накопленный прогресс при этом НЕ потеряется: перед сменой скорости
+        // он фиксируется в baseValue, и новая скорость прибавляется уже к нему.
+        const COUNTER3_SPEED_VERSION = "v1";                 // меняйте при каждой смене скорости
+        const COUNTER3_NEW_SPEED = 0.00000000000809375809;   // единиц в секунду
 
         // === НАСТРОЙКИ СЧЁТЧИКОВ ===
         const counters = [
@@ -467,8 +479,8 @@
                 el: document.getElementById("counter3"),
                 baseValue: 0,
                 startDate: null,
-                // Скорость из расчета 100 в сутки
-                perSecond: 0.00000000000809375809,
+                // Дефолт для новых пользователей (совпадает с COUNTER3_NEW_SPEED)
+                perSecond: COUNTER3_NEW_SPEED,
                 digits: 10,
                 active: false,
                 id: "counter3"
@@ -542,15 +554,17 @@
         }
 
         // ============================================================
-        // ФУНКЦИЯ СМЕНЫ СКОРОСТИ
+        // ФУНКЦИЯ СМЕНЫ СКОРОСТИ (с сохранением накопленного)
         // ============================================================
         function changeSpeed(c, newSpeed) {
             if (!c.active || c.startDate === null) {
+                // Счётчик не идёт — просто меняем скорость
                 c.perSecond = newSpeed;
                 saveCounterState(c);
                 return;
             }
 
+            // Фиксируем накопленное по СТАРОЙ скорости в baseValue
             const now = Date.now();
             const secondsPassed = (now - c.startDate) / 1000;
             c.baseValue = c.baseValue + c.perSecond * secondsPassed;
@@ -576,6 +590,19 @@
             }
             saveCounterState(counter3);
         }
+
+        // ============================================================
+        // МИГРАЦИЯ СКОРОСТИ COUNTER3
+        // ============================================================
+        // Применяется один раз при смене версии скорости.
+        // Накопленное значение сохраняется, новая скорость прибавляется к нему.
+        (function migrateCounter3Speed() {
+            const savedVersion = userStorage.getItem(LS_KEYS.counter3SpeedVersion);
+            if (savedVersion === COUNTER3_SPEED_VERSION) return;
+
+            changeSpeed(counter3, COUNTER3_NEW_SPEED);
+            userStorage.setItem(LS_KEYS.counter3SpeedVersion, COUNTER3_SPEED_VERSION);
+        })();
 
         // ============================================================
         // ОБНОВЛЕНИЕ СЧЁТЧИКОВ
@@ -858,11 +885,6 @@
             // TODO: обработка получения ваучера
             console.log("Получен ваучер на сумму", voucherBtn.textContent);
         });
-
-        // ============================================================
-        // ДЕМО: смена скорости counter3
-        // ============================================================
-        // changeSpeed(counter3, 0.00000000000902616);
 
         // ============================================================
         // НОВОСТИ
