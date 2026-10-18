@@ -59,6 +59,24 @@
             min-width: 260px;
         }
 
+        /* ===== ИНДИКАТОР СУТОЧНОГО ПРИРОСТА ===== */
+        .counter-box-wealth { position: relative; }
+
+        .daily-gain {
+            position: absolute;
+            top: 0.55rem;
+            right: 0.75rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            color: var(--danger);
+            text-shadow: 0 0 10px rgba(244, 63, 94, 0.35);
+            opacity: 0.9;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .daily-gain:empty { display: none; }
+
         .counter-label {
             font-size: 0.85rem;
             letter-spacing: 3px;
@@ -356,9 +374,10 @@
     </style>
 </head>
 <body>
-    <div class="counter-box">
+    <div class="counter-box counter-box-wealth">
         <div class="counter-label">Богатство Страны</div>
         <div class="counter" id="counter1">0</div>
+        <div class="daily-gain" id="dailyGain1"></div>
     </div>
 
     <div class="counter-box">
@@ -493,6 +512,13 @@
         const COOLDOWN_MS = 120 * 60 * 1000;
 
         // ============================================================
+        // СУТОЧНЫЙ ПРИРОСТ COUNTER1
+        // ============================================================
+        // Прирост за прошедшие сутки = perSecond * секунд в сутках.
+        // Выводим мелким красным шрифтом в правом верхнем углу карточки.
+        const SECONDS_PER_DAY = 24 * 60 * 60;
+
+        // ============================================================
         // ПРОСТРАНСТВО ИМЁН ДЛЯ LOCALSTORAGE
         // ============================================================
         function userKey(key) {
@@ -614,6 +640,24 @@
             });
         }
 
+        // Суточный прирост counter1 — мелкий красный индикатор в правом верхнем углу
+        function renderDailyGain() {
+            const el = document.getElementById("dailyGain1");
+            if (!el) return;
+
+            const c = counters[0];
+            if (!c.active || typeof c.perSecond !== "number") {
+                el.textContent = "";
+                return;
+            }
+
+            const gain = c.perSecond * SECONDS_PER_DAY;
+            const sign = gain >= 0 ? "+" : "−";
+            const abs = Math.abs(gain);
+
+            el.textContent = sign + formatNumber(abs, 2) + " за прошлые сутки";
+        }
+
         function update() {
             for (const c of counters) {
                 if (c.active === true && c.startDate === null) {
@@ -628,6 +672,10 @@
 
                 c.el.textContent = formatNumber(getCurrentValue(c), c.digits);
             }
+
+            // Рекомендованный вариант: индикатор пересчитывается каждый тик,
+            // поэтому остаётся корректным даже после changeSpeed()/миграции.
+            renderDailyGain();
         }
 
         setInterval(update, 250);
