@@ -655,7 +655,7 @@
             const sign = gain >= 0 ? "+" : "−";
             const abs = Math.abs(gain);
 
-            el.textContent = sign + formatNumber(abs, 2) + " за прошлые сутки";
+            el.textContent = sign + formatNumber(abs, 4) + " за прошлые сутки";
         }
 
         function update() {
