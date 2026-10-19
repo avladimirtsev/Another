@@ -8,7 +8,6 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            /* Палитра */
             --bg:            #0e1420;
             --bg-elev:       #172033;
             --bg-elev-2:     #1e2942;
@@ -16,9 +15,9 @@
             --text:          #e6edf6;
             --text-dim:      #94a3b8;
             --text-soft:     #cbd5e1;
-            --accent:        #34d399;   /* изумрудный */
-            --accent-2:      #60a5fa;   /* голубой */
-            --accent-warm:   #fbbf24;   /* янтарный для ваучера */
+            --accent:        #34d399;
+            --accent-2:      #60a5fa;
+            --accent-warm:   #fbbf24;
             --danger:        #f43f5e;
         }
 
@@ -46,7 +45,6 @@
 
         body.modal-open { overflow: hidden; }
 
-        /* ===== КАРТОЧКИ-СЧЁТЧИКИ ===== */
         .counter-box {
             display: flex;
             flex-direction: column;
@@ -59,7 +57,6 @@
             min-width: 260px;
         }
 
-        /* ===== ИНДИКАТОР СУТОЧНОГО ПРИРОСТА ===== */
         .counter-box-wealth { position: relative; }
 
         .daily-gain {
@@ -107,7 +104,6 @@
             text-shadow: 0 0 18px rgba(253, 230, 138, 0.3);
         }
 
-        /* ===== КНОПКИ ===== */
         .btn-row {
             display: flex;
             flex-wrap: wrap;
@@ -156,7 +152,6 @@
             box-shadow: none; filter: none; transform: none;
         }
 
-        /* ===== КНОПКА "ПОЛУЧИТЬ ВАУЧЕР" ===== */
         .voucher-btn {
             display: none;
             width: 100%;
@@ -185,7 +180,6 @@
             to   { transform: translateY(0);    opacity: 1; }
         }
 
-        /* ===== ИНФО-БОКСЫ (новости, о проекте) ===== */
         .news-box {
             min-width: 260px;
             max-width: 300px;
@@ -200,7 +194,6 @@
             text-align: left;
         }
 
-        /* Скроллбар */
         .news-box::-webkit-scrollbar { width: 6px; }
         .news-box::-webkit-scrollbar-track { background: transparent; }
         .news-box::-webkit-scrollbar-thumb {
@@ -242,7 +235,6 @@
         .news-item .news-text { color: var(--text-soft); }
         .news-item.new .news-text { color: #a7f3d0; }
 
-        /* ===== БЛОК "О ПРОЕКТЕ" ===== */
         .about-box {
             max-width: 640px;
             max-height: none;
@@ -293,7 +285,6 @@
             margin: 1.1rem 0;
         }
 
-        /* ===== МОДАЛЬНОЕ ОКНО ===== */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -395,7 +386,6 @@
         <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход и завершить участие</button>
     </div>
 
-    <!-- ===== КНОПКА "ПОЛУЧИТЬ ВАУЧЕР" ===== -->
     <button class="voucher-btn" id="voucherBtn"></button>
 
     <div class="news-box">
@@ -403,13 +393,11 @@
         <ul class="news-list" id="newsList"></ul>
     </div>
 
-    <!-- ===== БЛОК "О ПРОЕКТЕ" ===== -->
     <div class="news-box about-box">
         <div class="news-title">О проекте</div>
         <div class="about-content" id="aboutContent"></div>
     </div>
 
-    <!-- ===== МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ===== -->
     <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <div class="modal">
             <div class="modal-text">
@@ -432,49 +420,105 @@
         // ============================================================
         const tg = window.Telegram?.WebApp;
 
-        // Переменная для идентификатора пользователя Telegram
-        let USER_ID = null;
         let telegramUser = null;
+        let initData = "";
 
         if (tg) {
-            // Сообщаем Telegram, что приложение загружено
             tg.ready();
-            // Разворачиваем на весь экран
             tg.expand();
 
-            // Получаем данные пользователя (без всякой авторизации!)
-            telegramUser = tg.initDataUnsafe?.user;
+            telegramUser = tg.initDataUnsafe?.user || null;
+            initData     = tg.initData || "";
 
             if (telegramUser) {
-                USER_ID = "tg_" + telegramUser.id;
                 console.log("Telegram user:", telegramUser.first_name, telegramUser.id);
             } else {
-                console.warn("Открыто вне Telegram. Используем локальный аккаунт.");
+                console.warn("Открыто вне Telegram.");
             }
         } else {
             console.warn("Telegram WebApp SDK не загружен. Открыто вне Telegram.");
         }
 
-        // === КЛЮЧИ LOCALSTORAGE ===
+        // ============================================================
+        // API — ОБЩЕНИЕ С CLOUDFLARE WORKER
+        // ============================================================
+        const API_BASE = "https://ubiru-backend.a-vladimirtsev.workers.dev";
+
+        async function apiPost(path, payload = {}) {
+            try {
+                const res = await fetch(API_BASE + path, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ...payload, initData })
+                });
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                return await res.json();
+            } catch (e) {
+                console.warn("API error:", path, e);
+                return null;
+            }
+        }
+
+        function trackEvent(event, extra = "") {
+            // fire-and-forget
+            apiPost("/api/track", { event, extra });
+        }
+
+        // ============================================================
+        // ПРОГРЕСС (ХРАНИТСЯ НА СЕРВЕРЕ)
+        // ============================================================
+        let SERVER_PROGRESS = {
+            withdrawn: false,
+            finishValue: null,
+            cooldownUntil: 0
+        };
+
+        async function loadProgress() {
+            const data = await apiPost("/api/progress/get");
+            if (!data) return; // новый пользователь или ошибка сети
+
+            SERVER_PROGRESS = {
+                withdrawn:      !!data.withdrawn,
+                finishValue:    (typeof data.finishValue === "number") ? data.finishValue : null,
+                cooldownUntil:  data.cooldownUntil || 0
+            };
+
+            if (data.counter3Start !== null && typeof data.counter3Start === "number") {
+                counter3.baseValue = data.counter3Base || 0;
+                counter3.startDate = data.counter3Start;
+                counter3.active    = !!data.counter3Active;
+            }
+        }
+
+        async function saveProgress() {
+            await apiPost("/api/progress/save", {
+                withdrawn:      SERVER_PROGRESS.withdrawn,
+                finishValue:    SERVER_PROGRESS.finishValue,
+                cooldownUntil:  SERVER_PROGRESS.cooldownUntil || 0,
+                counter3Base:   counter3.baseValue,
+                counter3Start:  counter3.startDate,
+                counter3Active: counter3.active
+            });
+        }
+
+        // ============================================================
+        // localStorage — ТОЛЬКО ДЛЯ ТЕХНИЧЕСКОЙ МЕТКИ ВЕРСИИ СКОРОСТИ
+        // ============================================================
         const LS_KEYS = {
-            withdrawn: "withdrawn",
-            finishValue: "finishValue",
-            cooldownUntil: "cooldownUntil",
             counter3SpeedVersion: "counter3_speed_version"
+        };
+
+        const userStorage = {
+            getItem(k)    { return localStorage.getItem(k); },
+            setItem(k, v) { return localStorage.setItem(k, v); }
         };
 
         // ============================================================
         // НАСТРОЙКА СКОРОСТИ COUNTER3
         // ============================================================
-        // Чтобы изменить скорость прироста "Ваш Базовый Доход":
-        //   1) поменяйте значение COUNTER3_NEW_SPEED
-        //   2) увеличьте COUNTER3_SPEED_VERSION (например "v1" -> "v2")
-        // Накопленный прогресс при этом НЕ потеряется: перед сменой скорости
-        // он фиксируется в baseValue, и новая скорость прибавляется уже к нему.
-        const COUNTER3_SPEED_VERSION = "v2";                 // меняйте при каждой смене скорости
-        const COUNTER3_NEW_SPEED = 0.00000000000825563326;   // единиц в секунду
+        const COUNTER3_SPEED_VERSION = "v2";
+        const COUNTER3_NEW_SPEED = 0.00000000000825563326;
 
-        // === НАСТРОЙКИ СЧЁТЧИКОВ ===
         const counters = [
             {
                 el: document.getElementById("counter1"),
@@ -498,7 +542,6 @@
                 el: document.getElementById("counter3"),
                 baseValue: 0,
                 startDate: null,
-                // Дефолт для новых пользователей (совпадает с COUNTER3_NEW_SPEED)
                 perSecond: COUNTER3_NEW_SPEED,
                 digits: 10,
                 active: false,
@@ -508,130 +551,45 @@
 
         const counter3 = counters[2];
 
-        // Длительность периода охлаждения (120 минут)
         const COOLDOWN_MS = 120 * 60 * 1000;
-
-        // ============================================================
-        // СУТОЧНЫЙ ПРИРОСТ COUNTER1
-        // ============================================================
-        // Прирост за прошедшие сутки = perSecond * секунд в сутках.
-        // Выводим мелким красным шрифтом в правом верхнем углу карточки.
         const SECONDS_PER_DAY = 24 * 60 * 60;
 
-        // ============================================================
-        // ПРОСТРАНСТВО ИМЁН ДЛЯ LOCALSTORAGE
-        // ============================================================
-        function userKey(key) {
-            // Если открыто в Telegram — используем Telegram ID
-            if (USER_ID) {
-                return USER_ID + "_" + key;
-            }
-            // Иначе — обычный (не-ID) ключ. Локальная авторизация в этом коде больше не используется.
-            return key;
-        }
-
-        const userStorage = {
-            getItem(k)    { return localStorage.getItem(userKey(k)); },
-            setItem(k, v) { return localStorage.setItem(userKey(k), v); },
-            removeItem(k) { return localStorage.removeItem(userKey(k)); }
-        };
-
-        // ============================================================
-        // СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ
-        // ============================================================
-        function saveCounterState(c) {
-            if (!c.id) return;
-            try {
-                userStorage.setItem(c.id + "_state", JSON.stringify({
-                    baseValue: c.baseValue,
-                    startDate: c.startDate,
-                    perSecond: c.perSecond,
-                    active: c.active
-                }));
-            } catch (e) {
-                console.warn("Не удалось сохранить состояние " + c.id, e);
-            }
-        }
-
-        function loadCounterState(c) {
-            if (!c.id) return;
-            const raw = userStorage.getItem(c.id + "_state");
-            if (!raw) return;
-            try {
-                const s = JSON.parse(raw);
-                if (typeof s.baseValue === "number") c.baseValue = s.baseValue;
-                if (typeof s.perSecond === "number") c.perSecond = s.perSecond;
-                if (typeof s.active === "boolean") c.active = s.active;
-                if (s.startDate === null || typeof s.startDate === "number") {
-                    c.startDate = s.startDate;
-                }
-            } catch (e) {
-                console.warn("Не удалось восстановить состояние " + c.id, e);
-            }
-        }
-
-        // ============================================================
-        // ТЕКУЩЕЕ ЗНАЧЕНИЕ СЧЁТЧИКА
-        // ============================================================
         function getCurrentValue(c) {
             if (!c.active || c.startDate === null) return c.baseValue;
             const secondsPassed = (Date.now() - c.startDate) / 1000;
             return c.baseValue + c.perSecond * secondsPassed;
         }
 
-        // ============================================================
-        // ФУНКЦИЯ СМЕНЫ СКОРОСТИ (с сохранением накопленного)
-        // ============================================================
+        // Меняет скорость counter3, фиксируя накопленное в baseValue
         function changeSpeed(c, newSpeed) {
             if (!c.active || c.startDate === null) {
-                // Счётчик не идёт — просто меняем скорость
                 c.perSecond = newSpeed;
-                saveCounterState(c);
                 return;
             }
-
-            // Фиксируем накопленное по СТАРОЙ скорости в baseValue
             const now = Date.now();
             const secondsPassed = (now - c.startDate) / 1000;
             c.baseValue = c.baseValue + c.perSecond * secondsPassed;
             c.startDate = now;
             c.perSecond = newSpeed;
-
-            saveCounterState(c);
         }
 
-        // ============================================================
-        // ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ — ДО первого update()
-        // ============================================================
-        loadCounterState(counter1);
-        loadCounterState(counter2);
-        loadCounterState(counter3);
-
-        if (userStorage.getItem(LS_KEYS.withdrawn) === "1") {
-            if (!counter3.active) {
-                counter3.active = true;
-            }
-            if (counter3.startDate === null) {
-                counter3.startDate = Date.now();
-            }
-            saveCounterState(counter3);
-        }
-
-        // ============================================================
-        // МИГРАЦИЯ СКОРОСТИ COUNTER3
-        // ============================================================
-        // Применяется один раз при смене версии скорости.
-        // Накопленное значение сохраняется, новая скорость прибавляется к нему.
-        (function migrateCounter3Speed() {
+        // Одноразовая миграция скорости counter3 при смене версии
+        async function migrateCounter3Speed() {
             const savedVersion = userStorage.getItem(LS_KEYS.counter3SpeedVersion);
             if (savedVersion === COUNTER3_SPEED_VERSION) return;
 
             changeSpeed(counter3, COUNTER3_NEW_SPEED);
+
+            // Если счётчик активен — сохраняем зафиксированное значение на сервер
+            if (counter3.active && counter3.startDate !== null) {
+                await saveProgress();
+            }
+
             userStorage.setItem(LS_KEYS.counter3SpeedVersion, COUNTER3_SPEED_VERSION);
-        })();
+        }
 
         // ============================================================
-        // ОБНОВЛЕНИЕ СЧЁТЧИКОВ
+        // ОТРИСОВКА СЧЁТЧИКОВ
         // ============================================================
         function formatNumber(value, digits) {
             return value.toLocaleString("ru-RU", {
@@ -640,7 +598,6 @@
             });
         }
 
-        // Суточный прирост counter1 — мелкий красный индикатор в правом верхнем углу
         function renderDailyGain() {
             const el = document.getElementById("dailyGain1");
             if (!el) return;
@@ -662,7 +619,6 @@
             for (const c of counters) {
                 if (c.active === true && c.startDate === null) {
                     c.startDate = Date.now();
-                    saveCounterState(c);
                 }
 
                 if (c.active === false || c.startDate === null) {
@@ -673,8 +629,6 @@
                 c.el.textContent = formatNumber(getCurrentValue(c), c.digits);
             }
 
-            // Рекомендованный вариант: индикатор пересчитывается каждый тик,
-            // поэтому остаётся корректным даже после changeSpeed()/миграции.
             renderDailyGain();
         }
 
@@ -692,21 +646,14 @@
         const modalNo = document.getElementById("modalNo");
 
         // ============================================================
-        // ПЕРИОД ОХЛАЖДЕНИЯ
+        // ПЕРИОД ОХЛАЖДЕНИЯ (из SERVER_PROGRESS)
         // ============================================================
         function getCooldownUntil() {
-            const raw = userStorage.getItem(LS_KEYS.cooldownUntil);
-            if (!raw) return 0;
-            const v = parseInt(raw, 10);
-            return isNaN(v) ? 0 : v;
+            return SERVER_PROGRESS.cooldownUntil || 0;
         }
 
         function setCooldownUntil(ts) {
-            if (ts && ts > Date.now()) {
-                userStorage.setItem(LS_KEYS.cooldownUntil, String(ts));
-            } else {
-                userStorage.removeItem(LS_KEYS.cooldownUntil);
-            }
+            SERVER_PROGRESS.cooldownUntil = (ts && ts > Date.now()) ? ts : 0;
         }
 
         function formatCooldown(msLeft) {
@@ -721,7 +668,7 @@
         }
 
         // ============================================================
-        // СОСТОЯНИЯ ПЕРВОЙ КНОПКИ
+        // ПЕРВАЯ КНОПКА
         // ============================================================
         function refreshWithdrawBtn() {
             const left = cooldownRemaining();
@@ -730,7 +677,7 @@
                 btn.disabled = true;
             } else {
                 if (getCooldownUntil() !== 0) setCooldownUntil(0);
-                if (userStorage.getItem(LS_KEYS.withdrawn) === "1") {
+                if (SERVER_PROGRESS.withdrawn) {
                     setWithdrawBtnActive();
                 } else {
                     setWithdrawBtnDefault();
@@ -749,7 +696,7 @@
         }
 
         // ============================================================
-        // СОСТОЯНИЕ ВТОРОЙ КНОПКИ
+        // ВТОРАЯ КНОПКА
         // ============================================================
         const FINISH_DEFAULT_TEXT = "Вывести свой доход и завершить участие";
 
@@ -764,7 +711,7 @@
         }
 
         // ============================================================
-        // КНОПКА "ПОЛУЧИТЬ ВАУЧЕР"
+        // ВАУЧЕР
         // ============================================================
         function showVoucherBtn(value) {
             voucherBtn.textContent = "Получить ваучер на сумму " + formatNumber(value, counter3.digits);
@@ -778,41 +725,26 @@
         }
 
         // ============================================================
-        // ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ КНОПОК ПРИ ЗАГРУЗКЕ
+        // ВОССТАНОВЛЕНИЕ ВТОРОЙ КНОПКИ
         // ============================================================
         function restoreFinishBtn() {
-            const finishValueRaw = userStorage.getItem(LS_KEYS.finishValue);
-            const isAccumulating = userStorage.getItem(LS_KEYS.withdrawn) === "1";
-
-            // Идёт новый цикл накопления — вторая кнопка активна, ваучер скрыт
-            if (isAccumulating) {
+            if (SERVER_PROGRESS.withdrawn) {
                 setFinishBtnDefault(true);
                 hideVoucherBtn();
                 return;
             }
 
-            // Есть зафиксированное значение — показываем его и ваучер
-            if (finishValueRaw !== null) {
-                const finishValue = parseFloat(finishValueRaw);
-                if (!isNaN(finishValue)) {
-                    setFinishBtnFrozen(finishValue);
-                    showVoucherBtn(finishValue);
-                    return;
-                }
+            if (SERVER_PROGRESS.finishValue !== null) {
+                setFinishBtnFrozen(SERVER_PROGRESS.finishValue);
+                showVoucherBtn(SERVER_PROGRESS.finishValue);
+                return;
             }
 
-            // Свежая сессия — вторая кнопка неактивна, ваучер скрыт
             setFinishBtnDefault(false);
             hideVoucherBtn();
         }
 
-        // ============================================================
-        // ИНИЦИАЛИЗАЦИЯ КНОПОК
-        // ============================================================
-        refreshWithdrawBtn();
-        restoreFinishBtn();
-
-        // Тикер: раз в секунду обновляем надпись на первой кнопке, если идёт кулдаун
+        // Тикер первой кнопки — обновляем обратный отсчёт
         setInterval(() => {
             if (cooldownRemaining() > 0) {
                 refreshWithdrawBtn();
@@ -820,7 +752,7 @@
             }
 
             if (btn.disabled && btn.textContent.startsWith("Доступно через")) {
-                if (userStorage.getItem(LS_KEYS.withdrawn) === "1") {
+                if (SERVER_PROGRESS.withdrawn) {
                     setWithdrawBtnActive();
                 } else {
                     setWithdrawBtnDefault();
@@ -829,23 +761,26 @@
         }, 1000);
 
         // ============================================================
-        // КЛИК ПО ПЕРВОЙ КНОПКЕ — старт нового цикла
+        // КЛИК ПО ПЕРВОЙ КНОПКЕ
         // ============================================================
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", async () => {
             if (btn.disabled) return;
             if (cooldownRemaining() > 0) return;
+
+            trackEvent("click1");
 
             setWithdrawBtnActive();
 
             counter3.baseValue = 0;
             counter3.startDate = Date.now();
-            counter3.active = true;
+            counter3.active    = true;
 
-            userStorage.setItem(LS_KEYS.withdrawn, "1");
-            saveCounterState(counter3);
+            SERVER_PROGRESS.withdrawn     = true;
+            SERVER_PROGRESS.finishValue   = null;
+            SERVER_PROGRESS.cooldownUntil = 0;
 
-            // Оживляем вторую кнопку и скрываем кнопку ваучера
-            userStorage.removeItem(LS_KEYS.finishValue);
+            await saveProgress();
+
             setFinishBtnDefault(true);
             hideVoucherBtn();
         });
@@ -878,48 +813,40 @@
         // ============================================================
         // СЦЕНАРИЙ ВЫВОДА
         // ============================================================
-        function performFinish() {
-            // 1. Фиксируем текущее значение counter3
+        async function performFinish() {
             const finalValue = getCurrentValue(counter3);
 
-            // 2. Обнуляем и останавливаем counter3
             counter3.baseValue = 0;
             counter3.startDate = null;
-            counter3.active = false;
-            saveCounterState(counter3);
+            counter3.active    = false;
             counter3.el.textContent = formatNumber(0, counter3.digits);
 
-            // 3. Возвращаем первую кнопку в исходное состояние
-            //    и ставим её на период охлаждения
-            userStorage.removeItem(LS_KEYS.withdrawn);
-            setCooldownUntil(Date.now() + COOLDOWN_MS);
+            SERVER_PROGRESS.withdrawn     = false;
+            SERVER_PROGRESS.finishValue   = finalValue;
+            SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
+
+            await saveProgress();
+
             refreshWithdrawBtn();
-
-            // 4. Фиксируем значение на второй кнопке
-            userStorage.setItem(LS_KEYS.finishValue, String(finalValue));
             setFinishBtnFrozen(finalValue);
-
-            // 5. Показываем кнопку ваучера под основной парой кнопок
             showVoucherBtn(finalValue);
+
+            trackEvent("finish", String(finalValue));
         }
 
-        // "Нет" — просто закрываем окно
         modalNo.addEventListener("click", () => {
             closeConfirmModal();
         });
 
-        // "Да" — закрываем окно и запускаем сценарий
-        modalYes.addEventListener("click", () => {
+        modalYes.addEventListener("click", async () => {
             closeConfirmModal();
-            performFinish();
+            await performFinish();
         });
 
-        // Клик по затемнённому фону — как "Нет"
         modal.addEventListener("click", (e) => {
             if (e.target === modal) closeConfirmModal();
         });
 
-        // Esc — как "Нет"
         document.addEventListener("keydown", (e) => {
             if (e.key === "Escape" && modal.classList.contains("show")) {
                 closeConfirmModal();
@@ -927,10 +854,10 @@
         });
 
         // ============================================================
-        // КЛИК ПО КНОПКЕ ВАУЧЕРА (заглушка — логику добавите сами)
+        // ВАУЧЕР — ТРЕКИНГ КЛИКА
         // ============================================================
         voucherBtn.addEventListener("click", () => {
-            // TODO: обработка получения ваучера
+            trackEvent("voucher", voucherBtn.textContent);
             console.log("Получен ваучер на сумму", voucherBtn.textContent);
         });
 
@@ -1030,7 +957,6 @@
                     const p = document.createElement("p");
                     p.innerHTML = block.html;
                     box.appendChild(p);
-
                 } else if (block.type === "ul") {
                     const ul = document.createElement("ul");
                     for (const item of block.items) {
@@ -1039,7 +965,6 @@
                         ul.appendChild(li);
                     }
                     box.appendChild(ul);
-
                 } else if (block.type === "hr") {
                     box.appendChild(document.createElement("hr"));
                 }
@@ -1047,6 +972,24 @@
         }
 
         renderAbout();
+
+        // ============================================================
+        // ГЛАВНАЯ ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
+        (async function init() {
+            // 1. Отправляем событие входа (fire-and-forget)
+            trackEvent("open");
+
+            // 2. Загружаем прогресс с сервера (counter3 + состояние кнопок)
+            await loadProgress();
+
+            // 3. Одноразовая миграция скорости (если версия изменилась)
+            await migrateCounter3Speed();
+
+            // 4. Восстанавливаем UI кнопок
+            refreshWithdrawBtn();
+            restoreFinishBtn();
+        })();
     </script>
 </body>
 </html>
