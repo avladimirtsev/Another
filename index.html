@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Счётчик прироста богатства</title>
-    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
@@ -20,347 +19,142 @@
             --accent-warm:   #fbbf24;
             --danger:        #f43f5e;
         }
-
         * { box-sizing: border-box; }
-
         body {
-            background:
-                radial-gradient(1200px 600px at 50% -10%, #1a2540 0%, transparent 60%),
-                var(--bg);
+            background: radial-gradient(1200px 600px at 50% -10%, #1a2540 0%, transparent 60%), var(--bg);
             color: var(--text);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Courier New', monospace;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            gap: 1.5rem;
-            min-height: 100vh;
-            min-height: 100dvh;
-            margin: 0;
-            padding: 2rem 1rem 3rem;
-            overflow-x: hidden;
-            overflow-y: auto;
+            display: flex; flex-direction: column; justify-content: flex-start; align-items: center;
+            gap: 1.5rem; min-height: 100vh; min-height: 100dvh; margin: 0;
+            padding: 2rem 1rem 3rem; overflow-x: hidden; overflow-y: auto;
             -webkit-font-smoothing: antialiased;
         }
-
         body.modal-open { overflow: hidden; }
-
         .counter-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: flex; flex-direction: column; align-items: center;
             background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
-            border: 1px solid var(--border);
-            padding: 1.5rem 3rem;
-            border-radius: 18px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-            min-width: 260px;
+            border: 1px solid var(--border); padding: 1.5rem 3rem; border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); min-width: 260px;
         }
-
         .counter-box-wealth { position: relative; }
-
         .daily-gain {
-            position: absolute;
-            top: 0.55rem;
-            right: 0.75rem;
-            font-size: 0.68rem;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-            color: var(--danger);
-            text-shadow: 0 0 10px rgba(244, 63, 94, 0.35);
-            opacity: 0.9;
-            white-space: nowrap;
-            pointer-events: none;
+            position: absolute; top: 0.55rem; right: 0.75rem;
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.4px;
+            color: var(--danger); text-shadow: 0 0 10px rgba(244, 63, 94, 0.35);
+            opacity: 0.9; white-space: nowrap; pointer-events: none;
         }
         .daily-gain:empty { display: none; }
-
         .counter-label {
-            font-size: 0.85rem;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            margin-bottom: 0.6rem;
-            font-weight: 600;
+            font-size: 0.85rem; letter-spacing: 3px; text-transform: uppercase;
+            color: var(--text-dim); margin-bottom: 0.6rem; font-weight: 600;
         }
-
         .counter {
-            font-size: 2.1rem;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            word-break: break-all;
-            text-align: center;
-            color: var(--accent);
-            text-shadow: 0 0 18px rgba(52, 211, 153, 0.35);
-            letter-spacing: 0.5px;
+            font-size: 2.1rem; font-weight: 700; font-variant-numeric: tabular-nums;
+            word-break: break-all; text-align: center; color: var(--accent);
+            text-shadow: 0 0 18px rgba(52, 211, 153, 0.35); letter-spacing: 0.5px;
         }
-
-        .counter.blue {
-            color: var(--accent-2);
-            text-shadow: 0 0 18px rgba(96, 165, 250, 0.35);
-        }
-
-        .counter.white {
-            color: #fde68a;
-            text-shadow: 0 0 18px rgba(253, 230, 138, 0.3);
-        }
-
-        .btn-row {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 1rem;
-            width: 100%;
-            max-width: 640px;
-        }
-
+        .counter.blue { color: var(--accent-2); text-shadow: 0 0 18px rgba(96, 165, 250, 0.35); }
+        .counter.white { color: #fde68a; text-shadow: 0 0 18px rgba(253, 230, 138, 0.3); }
+        .btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; width: 100%; max-width: 640px; }
         .withdraw-btn {
-            flex: 1 1 260px;
-            padding: 1.15rem 2rem;
+            flex: 1 1 260px; padding: 1.15rem 2rem;
             background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
-            color: #fff;
-            font-family: inherit;
-            font-size: 1rem;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            border: none;
-            border-radius: 14px;
-            cursor: pointer;
-            box-shadow: 0 8px 24px rgba(244, 63, 94, 0.28);
+            color: #fff; font-family: inherit; font-size: 1rem; font-weight: 700;
+            letter-spacing: 1.5px; text-transform: uppercase; border: none; border-radius: 14px;
+            cursor: pointer; box-shadow: 0 8px 24px rgba(244, 63, 94, 0.28);
             transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease, background 0.3s ease;
         }
         .withdraw-btn:hover { filter: brightness(1.08); box-shadow: 0 10px 28px rgba(244, 63, 94, 0.4); }
         .withdraw-btn:active { transform: scale(0.98); }
         .withdraw-btn:disabled {
             background: linear-gradient(135deg, #334155, #1e293b);
-            color: #94a3b8;
-            cursor: not-allowed;
-            box-shadow: none;
-            filter: none;
-            transform: none;
+            color: #94a3b8; cursor: not-allowed; box-shadow: none; filter: none; transform: none;
         }
-
         .finish-btn {
             background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
-            color: #fff;
-            box-shadow: 0 8px 24px rgba(124, 58, 237, 0.28);
+            color: #fff; box-shadow: 0 8px 24px rgba(124, 58, 237, 0.28);
         }
         .finish-btn:hover { filter: brightness(1.08); box-shadow: 0 10px 28px rgba(124, 58, 237, 0.4); }
         .finish-btn:disabled {
             background: linear-gradient(135deg, #334155, #1e293b);
-            color: #94a3b8;
-            box-shadow: none; filter: none; transform: none;
+            color: #94a3b8; box-shadow: none; filter: none; transform: none;
         }
-
         .voucher-btn {
-            display: none;
-            width: 100%;
-            max-width: 640px;
-            padding: 1.05rem 2rem;
+            display: none; width: 100%; max-width: 640px; padding: 1.05rem 2rem;
             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            color: #1f2937;
-            font-family: inherit;
-            font-size: 0.95rem;
-            font-weight: 800;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            border: none;
-            border-radius: 14px;
-            cursor: pointer;
-            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.28);
+            color: #1f2937; font-family: inherit; font-size: 0.95rem; font-weight: 800;
+            letter-spacing: 1.5px; text-transform: uppercase; border: none; border-radius: 14px;
+            cursor: pointer; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.28);
             transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s ease;
             animation: voucherIn 0.3s ease;
         }
         .voucher-btn.show { display: block; }
         .voucher-btn:hover { filter: brightness(1.05); box-shadow: 0 10px 28px rgba(245, 158, 11, 0.4); }
         .voucher-btn:active { transform: scale(0.98); }
-
-        @keyframes voucherIn {
-            from { transform: translateY(-8px); opacity: 0; }
-            to   { transform: translateY(0);    opacity: 1; }
-        }
-
+        @keyframes voucherIn { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .news-box {
-            min-width: 260px;
-            max-width: 300px;
-            max-height: 320px;
-            overflow-y: auto;
-            width: 100%;
+            min-width: 260px; max-width: 300px; max-height: 320px; overflow-y: auto; width: 100%;
             background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
-            border: 1px solid var(--border);
-            padding: 1.4rem 1.6rem;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            text-align: left;
+            border: 1px solid var(--border); padding: 1.4rem 1.6rem; border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); text-align: left;
         }
-
         .news-box::-webkit-scrollbar { width: 6px; }
         .news-box::-webkit-scrollbar-track { background: transparent; }
-        .news-box::-webkit-scrollbar-thumb {
-            background: rgba(148, 163, 184, 0.25);
-            border-radius: 3px;
-        }
+        .news-box::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 3px; }
         .news-box::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
-
         .news-title {
-            font-size: 0.85rem;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            font-weight: 600;
-            margin-bottom: 1rem;
-            padding-bottom: 0.7rem;
-            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem; letter-spacing: 3px; text-transform: uppercase;
+            color: var(--text-dim); font-weight: 600; margin-bottom: 1rem;
+            padding-bottom: 0.7rem; border-bottom: 1px solid var(--border);
         }
-
-        .news-list {
-            list-style: none;
-            padding: 0; margin: 0;
-            display: flex; flex-direction: column; gap: 1rem;
-        }
-
-        .news-item {
-            color: var(--text-soft);
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
+        .news-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem; }
+        .news-item { color: var(--text-soft); font-size: 0.9rem; line-height: 1.5; }
         .news-item .news-date {
-            display: block;
-            color: #7d8aa0;
-            font-size: 0.72rem;
-            letter-spacing: 1.2px;
-            margin-bottom: 0.25rem;
-            text-transform: uppercase;
+            display: block; color: #7d8aa0; font-size: 0.72rem; letter-spacing: 1.2px;
+            margin-bottom: 0.25rem; text-transform: uppercase;
         }
         .news-item .news-text { color: var(--text-soft); }
         .news-item.new .news-text { color: #a7f3d0; }
-
-        .about-box {
-            max-width: 640px;
-            max-height: none;
-        }
-
-        .about-content {
-            color: var(--text-soft);
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
+        .about-box { max-width: 640px; max-height: none; }
+        .about-content { color: var(--text-soft); font-size: 0.9rem; line-height: 1.6; }
         .about-content p { margin: 0 0 0.9rem; }
         .about-content p:last-child { margin-bottom: 0; }
-
-        .about-content strong {
-            color: var(--accent);
-            font-weight: 700;
-            letter-spacing: 0.4px;
-        }
-
-        .about-content ul {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 0.9rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .about-content li {
-            position: relative;
-            padding-left: 1.25rem;
-            color: var(--text-soft);
-        }
-        .about-content li::before {
-            content: "▸";
-            position: absolute;
-            left: 0;
-            color: var(--accent-2);
-            font-weight: 700;
-        }
-
+        .about-content strong { color: var(--accent); font-weight: 700; letter-spacing: 0.4px; }
+        .about-content ul { list-style: none; padding: 0; margin: 0 0 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .about-content li { position: relative; padding-left: 1.25rem; color: var(--text-soft); }
+        .about-content li::before { content: "▸"; position: absolute; left: 0; color: var(--accent-2); font-weight: 700; }
         .about-content .accent { color: var(--accent); }
-
-        .about-content hr {
-            border: none;
-            border-top: 1px solid var(--border);
-            margin: 1.1rem 0;
-        }
-
+        .about-content hr { border: none; border-top: 1px solid var(--border); margin: 1.1rem 0; }
         .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(8, 12, 20, 0.75);
-            backdrop-filter: blur(8px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            padding: 1.5rem;
-            z-index: 999;
+            position: fixed; inset: 0; background: rgba(8, 12, 20, 0.75); backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center; padding: 1.5rem; z-index: 999;
         }
         .modal-overlay.show { display: flex; }
-
         .modal {
             background: linear-gradient(180deg, #1b2540 0%, #131b2e 100%);
-            border: 1px solid rgba(124, 58, 237, 0.35);
-            border-radius: 20px;
-            padding: 2rem 2rem 1.6rem;
-            max-width: 560px;
-            width: 100%;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
-            color: var(--text);
-            font-size: 0.98rem;
-            line-height: 1.6;
-            animation: modalIn 0.25s ease;
+            border: 1px solid rgba(124, 58, 237, 0.35); border-radius: 20px;
+            padding: 2rem 2rem 1.6rem; max-width: 560px; width: 100%;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55); color: var(--text);
+            font-size: 0.98rem; line-height: 1.6; animation: modalIn 0.25s ease;
         }
-        @keyframes modalIn {
-            from { transform: translateY(20px); opacity: 0; }
-            to   { transform: translateY(0);    opacity: 1; }
-        }
-
+        @keyframes modalIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .modal-text { margin-bottom: 1.5rem; color: var(--text-soft); }
         .modal-text .accent { color: var(--accent); font-weight: 700; }
-
         .modal-question {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #c4b5fd;
-            letter-spacing: 1px;
-            margin-bottom: 1.5rem;
-            text-align: center;
+            font-size: 1.1rem; font-weight: 700; color: #c4b5fd;
+            letter-spacing: 1px; margin-bottom: 1.5rem; text-align: center;
         }
-
-        .modal-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-        }
-
+        .modal-actions { display: flex; gap: 1rem; justify-content: center; }
         .modal-actions button {
-            flex: 1 1 120px;
-            padding: 0.9rem 1.5rem;
-            font-family: inherit;
-            font-size: 0.95rem;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: transform 0.15s ease, filter 0.15s ease;
+            flex: 1 1 120px; padding: 0.9rem 1.5rem; font-family: inherit;
+            font-size: 0.95rem; font-weight: 700; letter-spacing: 1.5px;
+            text-transform: uppercase; border: none; border-radius: 12px;
+            cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease;
         }
         .modal-actions button:active { transform: scale(0.97); }
-
-        .modal-yes {
-            background: linear-gradient(135deg, #f43f5e, #be123c);
-            color: #fff;
-            box-shadow: 0 8px 22px rgba(244, 63, 94, 0.3);
-        }
+        .modal-yes { background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff; box-shadow: 0 8px 22px rgba(244, 63, 94, 0.3); }
         .modal-yes:hover { filter: brightness(1.08); }
-
-        .modal-no {
-            background: linear-gradient(135deg, #334155, #1e293b);
-            color: #e2e8f0;
-            box-shadow: 0 8px 22px rgba(51, 65, 85, 0.3);
-        }
+        .modal-no { background: linear-gradient(135deg, #334155, #1e293b); color: #e2e8f0; box-shadow: 0 8px 22px rgba(51, 65, 85, 0.3); }
         .modal-no:hover { filter: brightness(1.15); }
     </style>
 </head>
@@ -370,34 +164,27 @@
         <div class="counter" id="counter1">0</div>
         <div class="daily-gain" id="dailyGain1"></div>
     </div>
-
     <div class="counter-box">
         <div class="counter-label">Численность населения</div>
         <div class="counter blue" id="counter2">0</div>
     </div>
-
     <div class="counter-box">
         <div class="counter-label">Ваш Базовый Доход</div>
         <div class="counter white" id="counter3">0</div>
     </div>
-
     <div class="btn-row">
         <button class="withdraw-btn" id="withdrawBtn">Получить долю Богатства Страны</button>
         <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход и завершить участие</button>
     </div>
-
     <button class="voucher-btn" id="voucherBtn"></button>
-
     <div class="news-box">
         <div class="news-title">Новости проекта</div>
         <ul class="news-list" id="newsList"></ul>
     </div>
-
     <div class="news-box about-box">
         <div class="news-title">О проекте</div>
         <div class="about-content" id="aboutContent"></div>
     </div>
-
     <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <div class="modal">
             <div class="modal-text">
@@ -416,40 +203,35 @@
 
     <script>
         // ============================================================
-        // ИНИЦИАЛИЗАЦИЯ TELEGRAM MINI APP
+        // TELEGRAM INIT
         // ============================================================
         const tg = window.Telegram?.WebApp;
-
         let telegramUser = null;
         let initData = "";
 
         if (tg) {
             tg.ready();
             tg.expand();
-
             telegramUser = tg.initDataUnsafe?.user || null;
             initData     = tg.initData || "";
-
-            if (telegramUser) {
-                console.log("Telegram user:", telegramUser.first_name, telegramUser.id);
-            } else {
-                console.warn("Открыто вне Telegram.");
-            }
+            if (telegramUser) console.log("Telegram user:", telegramUser.first_name, telegramUser.id);
+            else console.warn("Открыто вне Telegram.");
         } else {
-            console.warn("Telegram WebApp SDK не загружен. Открыто вне Telegram.");
+            console.warn("Telegram WebApp SDK не загружен.");
         }
 
         // ============================================================
-        // API — ОБЩЕНИЕ С CLOUDFLARE WORKER
+        // API
         // ============================================================
         const API_BASE = "https://ubiru-backend.a-vladimirtsev.workers.dev";
 
-        async function apiPost(path, payload = {}) {
+        async function apiPost(path, payload = {}, options = {}) {
             try {
                 const res = await fetch(API_BASE + path, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...payload, initData })
+                    body: JSON.stringify({ ...payload, initData }),
+                    ...(options.keepalive ? { keepalive: true } : {})
                 });
                 if (!res.ok) throw new Error("HTTP " + res.status);
                 return await res.json();
@@ -460,61 +242,65 @@
         }
 
         function trackEvent(event, extra = "") {
-            // fire-and-forget
-            apiPost("/api/track", { event, extra });
+            apiPost("/api/track", { event, extra }, { keepalive: true });
         }
 
         // ============================================================
-        // ПРОГРЕСС (ХРАНИТСЯ НА СЕРВЕРЕ)
+        // СЕРВЕРНЫЙ ПРОГРЕСС
         // ============================================================
         let SERVER_PROGRESS = {
             withdrawn: false,
             finishValue: null,
-            cooldownUntil: 0
+            cooldownUntil: 0,
+            counter3SpeedVersion: ""
         };
 
         async function loadProgress() {
             const data = await apiPost("/api/progress/get");
-            if (!data) return; // новый пользователь или ошибка сети
+            if (!data) return;
 
             SERVER_PROGRESS = {
-                withdrawn:      !!data.withdrawn,
-                finishValue:    (typeof data.finishValue === "number") ? data.finishValue : null,
-                cooldownUntil:  data.cooldownUntil || 0
+                withdrawn:            !!data.withdrawn,
+                finishValue:          (typeof data.finishValue === "number") ? data.finishValue : null,
+                cooldownUntil:        data.cooldownUntil || 0,
+                counter3SpeedVersion: data.counter3SpeedVersion || ""
             };
 
             if (data.counter3Start !== null && typeof data.counter3Start === "number") {
-                counter3.baseValue = data.counter3Base || 0;
+                counter3.baseValue = Number(data.counter3Base) || 0;
                 counter3.startDate = data.counter3Start;
                 counter3.active    = !!data.counter3Active;
+                counter3.perSecond = Number(data.counter3PerSecond) || COUNTER3_NEW_SPEED;
+            } else {
+                counter3.baseValue = 0;
+                counter3.startDate = null;
+                counter3.active    = false;
+                counter3.perSecond = COUNTER3_NEW_SPEED;
             }
         }
 
-        async function saveProgress() {
+        async function saveProgress(keepalive = false) {
+            // Фиксируем накопленное в baseValue, чтобы не потерять при уходе
+            if (counter3.active && counter3.startDate !== null) {
+                const now = Date.now();
+                const secondsPassed = (now - counter3.startDate) / 1000;
+                counter3.baseValue = counter3.baseValue + counter3.perSecond * secondsPassed;
+                counter3.startDate = now;
+            }
             await apiPost("/api/progress/save", {
-                withdrawn:      SERVER_PROGRESS.withdrawn,
-                finishValue:    SERVER_PROGRESS.finishValue,
-                cooldownUntil:  SERVER_PROGRESS.cooldownUntil || 0,
-                counter3Base:   counter3.baseValue,
-                counter3Start:  counter3.startDate,
-                counter3Active: counter3.active
-            });
+                withdrawn:            SERVER_PROGRESS.withdrawn,
+                finishValue:          SERVER_PROGRESS.finishValue,
+                cooldownUntil:        SERVER_PROGRESS.cooldownUntil || 0,
+                counter3Base:         counter3.baseValue,
+                counter3Start:        counter3.startDate,
+                counter3Active:       counter3.active,
+                counter3PerSecond:    counter3.perSecond,
+                counter3SpeedVersion: COUNTER3_SPEED_VERSION
+            }, { keepalive });
         }
 
         // ============================================================
-        // localStorage — ТОЛЬКО ДЛЯ ТЕХНИЧЕСКОЙ МЕТКИ ВЕРСИИ СКОРОСТИ
-        // ============================================================
-        const LS_KEYS = {
-            counter3SpeedVersion: "counter3_speed_version"
-        };
-
-        const userStorage = {
-            getItem(k)    { return localStorage.getItem(k); },
-            setItem(k, v) { return localStorage.setItem(k, v); }
-        };
-
-        // ============================================================
-        // НАСТРОЙКА СКОРОСТИ COUNTER3
+        // НАСТРОЙКИ СЧЁТЧИКОВ
         // ============================================================
         const COUNTER3_SPEED_VERSION = "v2";
         const COUNTER3_NEW_SPEED = 0.00000000000825563326;
@@ -525,32 +311,25 @@
                 baseValue: 2680,
                 startDate: new Date("2026-10-15T00:00:00+03:00").getTime(),
                 perSecond: 0.0012407407,
-                digits: 4,
-                active: true,
-                id: "counter1"
+                digits: 4, active: true, id: "counter1"
             },
             {
                 el: document.getElementById("counter2"),
                 baseValue: 143000000,
                 startDate: new Date("2026-10-14T00:00:00+03:00").getTime(),
                 perSecond: -0.011,
-                digits: 0,
-                active: true,
-                id: "counter2"
+                digits: 0, active: true, id: "counter2"
             },
             {
                 el: document.getElementById("counter3"),
                 baseValue: 0,
                 startDate: null,
                 perSecond: COUNTER3_NEW_SPEED,
-                digits: 10,
-                active: false,
-                id: "counter3"
+                digits: 10, active: false, id: "counter3"
             }
         ];
 
         const counter3 = counters[2];
-
         const COOLDOWN_MS = 120 * 60 * 1000;
         const SECONDS_PER_DAY = 24 * 60 * 60;
 
@@ -560,7 +339,6 @@
             return c.baseValue + c.perSecond * secondsPassed;
         }
 
-        // Меняет скорость counter3, фиксируя накопленное в baseValue
         function changeSpeed(c, newSpeed) {
             if (!c.active || c.startDate === null) {
                 c.perSecond = newSpeed;
@@ -573,67 +351,63 @@
             c.perSecond = newSpeed;
         }
 
-        // Одноразовая миграция скорости counter3 при смене версии
-        async function migrateCounter3Speed() {
-            const savedVersion = userStorage.getItem(LS_KEYS.counter3SpeedVersion);
-            if (savedVersion === COUNTER3_SPEED_VERSION) return;
-
+        async function migrateCounter3Speed(serverVersion) {
+            if (serverVersion === COUNTER3_SPEED_VERSION) return;
             changeSpeed(counter3, COUNTER3_NEW_SPEED);
-
-            // Если счётчик активен — сохраняем зафиксированное значение на сервер
-            if (counter3.active && counter3.startDate !== null) {
-                await saveProgress();
-            }
-
-            userStorage.setItem(LS_KEYS.counter3SpeedVersion, COUNTER3_SPEED_VERSION);
+            if (counter3.active) await saveProgress();
         }
 
         // ============================================================
-        // ОТРИСОВКА СЧЁТЧИКОВ
+        // ОТРИСОВКА
         // ============================================================
         function formatNumber(value, digits) {
             return value.toLocaleString("ru-RU", {
-                minimumFractionDigits: digits,
-                maximumFractionDigits: digits
+                minimumFractionDigits: digits, maximumFractionDigits: digits
             });
         }
 
         function renderDailyGain() {
             const el = document.getElementById("dailyGain1");
             if (!el) return;
-
             const c = counters[0];
-            if (!c.active || typeof c.perSecond !== "number") {
-                el.textContent = "";
-                return;
-            }
-
+            if (!c.active || typeof c.perSecond !== "number") { el.textContent = ""; return; }
             const gain = c.perSecond * SECONDS_PER_DAY;
             const sign = gain >= 0 ? "+" : "−";
-            const abs = Math.abs(gain);
-
-            el.textContent = sign + formatNumber(abs, 4) + " за прошлые сутки";
+            el.textContent = sign + formatNumber(Math.abs(gain), 4) + " за прошлые сутки";
         }
 
         function update() {
             for (const c of counters) {
-                if (c.active === true && c.startDate === null) {
-                    c.startDate = Date.now();
-                }
-
-                if (c.active === false || c.startDate === null) {
+                if (!c.active || c.startDate === null) {
                     c.el.textContent = formatNumber(c.baseValue, c.digits);
                     continue;
                 }
-
                 c.el.textContent = formatNumber(getCurrentValue(c), c.digits);
             }
-
             renderDailyGain();
         }
 
         setInterval(update, 250);
         update();
+
+        // ============================================================
+        // ПЕРИОДИЧЕСКОЕ СОХРАНЕНИЕ counter3 (раз в 20 сек)
+        // ============================================================
+        setInterval(() => {
+            if (counter3.active) saveProgress();
+        }, 20 * 1000);
+
+        // ============================================================
+        // СОХРАНЕНИЕ ПРИ УХОДЕ ИЗ MINI APP
+        // ============================================================
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden" && counter3.active) {
+                saveProgress(true);
+            }
+        });
+        window.addEventListener("pagehide", () => {
+            if (counter3.active) saveProgress(true);
+        });
 
         // ============================================================
         // ЭЛЕМЕНТЫ УПРАВЛЕНИЯ
@@ -645,16 +419,8 @@
         const modalYes = document.getElementById("modalYes");
         const modalNo = document.getElementById("modalNo");
 
-        // ============================================================
-        // ПЕРИОД ОХЛАЖДЕНИЯ (из SERVER_PROGRESS)
-        // ============================================================
-        function getCooldownUntil() {
-            return SERVER_PROGRESS.cooldownUntil || 0;
-        }
-
-        function setCooldownUntil(ts) {
-            SERVER_PROGRESS.cooldownUntil = (ts && ts > Date.now()) ? ts : 0;
-        }
+        function getCooldownUntil() { return SERVER_PROGRESS.cooldownUntil || 0; }
+        function setCooldownUntil(ts) { SERVER_PROGRESS.cooldownUntil = (ts && ts > Date.now()) ? ts : 0; }
 
         function formatCooldown(msLeft) {
             const totalSec = Math.max(0, Math.ceil(msLeft / 1000));
@@ -662,14 +428,8 @@
             const s = totalSec % 60;
             return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
         }
+        function cooldownRemaining() { return getCooldownUntil() - Date.now(); }
 
-        function cooldownRemaining() {
-            return getCooldownUntil() - Date.now();
-        }
-
-        // ============================================================
-        // ПЕРВАЯ КНОПКА
-        // ============================================================
         function refreshWithdrawBtn() {
             const left = cooldownRemaining();
             if (left > 0) {
@@ -677,86 +437,59 @@
                 btn.disabled = true;
             } else {
                 if (getCooldownUntil() !== 0) setCooldownUntil(0);
-                if (SERVER_PROGRESS.withdrawn) {
-                    setWithdrawBtnActive();
-                } else {
-                    setWithdrawBtnDefault();
-                }
+                if (SERVER_PROGRESS.withdrawn) setWithdrawBtnActive();
+                else setWithdrawBtnDefault();
             }
         }
-
         function setWithdrawBtnDefault() {
             btn.textContent = "Получить долю Богатства Страны";
             btn.disabled = false;
         }
-
         function setWithdrawBtnActive() {
             btn.textContent = "Вам уже поступает доля Богатства Страны!";
             btn.disabled = true;
         }
 
-        // ============================================================
-        // ВТОРАЯ КНОПКА
-        // ============================================================
         const FINISH_DEFAULT_TEXT = "Вывести свой доход и завершить участие";
-
         function setFinishBtnDefault(enabled) {
             finishBtn.textContent = FINISH_DEFAULT_TEXT;
             finishBtn.disabled = !enabled;
         }
-
         function setFinishBtnFrozen(value) {
             finishBtn.textContent = "Ваша доля равна " + formatNumber(value, counter3.digits);
             finishBtn.disabled = true;
         }
 
-        // ============================================================
-        // ВАУЧЕР
-        // ============================================================
         function showVoucherBtn(value) {
             voucherBtn.textContent = "Получить ваучер на сумму " + formatNumber(value, counter3.digits);
             voucherBtn.classList.add("show");
             voucherBtn.disabled = false;
         }
-
         function hideVoucherBtn() {
             voucherBtn.classList.remove("show");
             voucherBtn.textContent = "";
         }
 
-        // ============================================================
-        // ВОССТАНОВЛЕНИЕ ВТОРОЙ КНОПКИ
-        // ============================================================
         function restoreFinishBtn() {
             if (SERVER_PROGRESS.withdrawn) {
                 setFinishBtnDefault(true);
                 hideVoucherBtn();
                 return;
             }
-
             if (SERVER_PROGRESS.finishValue !== null) {
                 setFinishBtnFrozen(SERVER_PROGRESS.finishValue);
                 showVoucherBtn(SERVER_PROGRESS.finishValue);
                 return;
             }
-
             setFinishBtnDefault(false);
             hideVoucherBtn();
         }
 
-        // Тикер первой кнопки — обновляем обратный отсчёт
         setInterval(() => {
-            if (cooldownRemaining() > 0) {
-                refreshWithdrawBtn();
-                return;
-            }
-
+            if (cooldownRemaining() > 0) { refreshWithdrawBtn(); return; }
             if (btn.disabled && btn.textContent.startsWith("Доступно через")) {
-                if (SERVER_PROGRESS.withdrawn) {
-                    setWithdrawBtnActive();
-                } else {
-                    setWithdrawBtnDefault();
-                }
+                if (SERVER_PROGRESS.withdrawn) setWithdrawBtnActive();
+                else setWithdrawBtnDefault();
             }
         }, 1000);
 
@@ -766,14 +499,13 @@
         btn.addEventListener("click", async () => {
             if (btn.disabled) return;
             if (cooldownRemaining() > 0) return;
-
             trackEvent("click1");
-
             setWithdrawBtnActive();
 
             counter3.baseValue = 0;
             counter3.startDate = Date.now();
             counter3.active    = true;
+            counter3.perSecond = COUNTER3_NEW_SPEED;
 
             SERVER_PROGRESS.withdrawn     = true;
             SERVER_PROGRESS.finishValue   = null;
@@ -785,9 +517,6 @@
             hideVoucherBtn();
         });
 
-        // ============================================================
-        // МОДАЛЬНОЕ ОКНО
-        // ============================================================
         function openConfirmModal() {
             modal.classList.add("show");
             document.body.classList.add("modal-open");
@@ -798,24 +527,14 @@
             document.body.classList.remove("modal-open");
         }
 
-        // ============================================================
-        // КЛИК ПО ВТОРОЙ КНОПКЕ
-        // ============================================================
         finishBtn.addEventListener("click", () => {
             if (finishBtn.disabled) return;
-
-            const current = getCurrentValue(counter3);
-            if (current <= 0) return;
-
+            if (getCurrentValue(counter3) <= 0) return;
             openConfirmModal();
         });
 
-        // ============================================================
-        // СЦЕНАРИЙ ВЫВОДА
-        // ============================================================
         async function performFinish() {
             const finalValue = getCurrentValue(counter3);
-
             counter3.baseValue = 0;
             counter3.startDate = null;
             counter3.active    = false;
@@ -830,39 +549,26 @@
             refreshWithdrawBtn();
             setFinishBtnFrozen(finalValue);
             showVoucherBtn(finalValue);
-
             trackEvent("finish", String(finalValue));
         }
 
-        modalNo.addEventListener("click", () => {
-            closeConfirmModal();
-        });
-
+        modalNo.addEventListener("click", () => closeConfirmModal());
         modalYes.addEventListener("click", async () => {
             closeConfirmModal();
             await performFinish();
         });
-
-        modal.addEventListener("click", (e) => {
-            if (e.target === modal) closeConfirmModal();
-        });
-
+        modal.addEventListener("click", (e) => { if (e.target === modal) closeConfirmModal(); });
         document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape" && modal.classList.contains("show")) {
-                closeConfirmModal();
-            }
+            if (e.key === "Escape" && modal.classList.contains("show")) closeConfirmModal();
         });
 
-        // ============================================================
-        // ВАУЧЕР — ТРЕКИНГ КЛИКА
-        // ============================================================
         voucherBtn.addEventListener("click", () => {
             trackEvent("voucher", voucherBtn.textContent);
             console.log("Получен ваучер на сумму", voucherBtn.textContent);
         });
 
         // ============================================================
-        // НОВОСТИ
+        // НОВОСТИ И О ПРОЕКТЕ (без изменений)
         // ============================================================
         const news = [
             { date: "18.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 2%⚡️.", isNew: true },
@@ -877,81 +583,38 @@
         function renderNews() {
             const list = document.getElementById("newsList");
             list.innerHTML = "";
-
             if (!news.length) {
                 const empty = document.createElement("li");
                 empty.className = "news-item";
                 empty.innerHTML = `<span class="news-text" style="color:#64748b">Пока новостей нет</span>`;
-                list.appendChild(empty);
-                return;
+                list.appendChild(empty); return;
             }
-
             for (const item of news) {
                 const li = document.createElement("li");
                 li.className = "news-item" + (item.isNew ? " new" : "");
-                li.innerHTML = `
-                    <span class="news-date">${item.date}</span>
-                    <span class="news-text">${item.text}</span>
-                `;
+                li.innerHTML = `<span class="news-date">${item.date}</span><span class="news-text">${item.text}</span>`;
                 list.appendChild(li);
             }
         }
-
         renderNews();
 
-        // ============================================================
-        // БЛОК "О ПРОЕКТЕ"
-        // ============================================================
         const aboutText = [
-            {
-                type: "p",
-                html: '<strong>Цель проекта</strong>'
-            },
-            {
-                type: "ul",
-                items: [
-                    "💡 Обеспечение каждого Безусловным Базовым Доходом.",
-                    "💡 Создание благополучного и счастливого Будущего."
-                ]
-            },
+            { type: "p", html: '<strong>Цель проекта</strong>' },
+            { type: "ul", items: ["💡 Обеспечение каждого Безусловным Базовым Доходом.", "💡 Создание благополучного и счастливого Будущего."] },
             { type: "hr" },
-            {
-                type: "p",
-                html: '<strong>Правила:</strong>'
-            },
-            {
-                type: "ul",
-                items: [
-                    "Ваша доля Базового Дохода начисляется автоматически после активации личного счёта.",
-                    "Вы можете вывести свою долю.",
-                    "После вывода доли действует период охлаждения."
-                ]
-            },
+            { type: "p", html: '<strong>Правила:</strong>' },
+            { type: "ul", items: ["Ваша доля Базового Дохода начисляется автоматически после активации личного счёта.", "Вы можете вывести свою долю.", "После вывода доли действует период охлаждения."] },
             { type: "hr" },
-            {
-                type: "p",
-                html: '<strong>Условия:</strong>'
-            },
-            {
-                type: "ul",
-                items: [
-                    "Безусловный Базовый Доход выплачивается всем, а не только нуждающимся.",
-                    "Это постоянная выплата, а не разовая акция.",
-                    "Не требуется проверки доходов или обязанности поиска работы."
-                ]
-            },
+            { type: "p", html: '<strong>Условия:</strong>' },
+            { type: "ul", items: ["Безусловный Базовый Доход выплачивается всем, а не только нуждающимся.", "Это постоянная выплата, а не разовая акция.", "Не требуется проверки доходов или обязанности поиска работы."] },
             { type: "hr" },
-            {
-                type: "p",
-                html: '<strong>Важно:</strong> Каждый имеет право быть счастливым. Мы помогаем Вам хотя бы немного не переживать за будущее. '
-            }
+            { type: "p", html: '<strong>Важно:</strong> Каждый имеет право быть счастливым. Мы помогаем Вам хотя бы немного не переживать за будущее.' }
         ];
 
         function renderAbout() {
             const box = document.getElementById("aboutContent");
             if (!box) return;
             box.innerHTML = "";
-
             for (const block of aboutText) {
                 if (block.type === "p") {
                     const p = document.createElement("p");
@@ -970,23 +633,15 @@
                 }
             }
         }
-
         renderAbout();
 
         // ============================================================
-        // ГЛАВНАЯ ИНИЦИАЛИЗАЦИЯ
+        // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
         (async function init() {
-            // 1. Отправляем событие входа (fire-and-forget)
             trackEvent("open");
-
-            // 2. Загружаем прогресс с сервера (counter3 + состояние кнопок)
             await loadProgress();
-
-            // 3. Одноразовая миграция скорости (если версия изменилась)
-            await migrateCounter3Speed();
-
-            // 4. Восстанавливаем UI кнопок
+            await migrateCounter3Speed(SERVER_PROGRESS.counter3SpeedVersion);
             refreshWithdrawBtn();
             restoreFinishBtn();
         })();
