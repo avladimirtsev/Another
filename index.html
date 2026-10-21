@@ -37,6 +37,10 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); min-width: 260px;
         }
         .counter-box-wealth { position: relative; }
+        .counter-box-total {
+            border-color: rgba(251, 191, 36, 0.28);
+            box-shadow: 0 10px 30px rgba(251, 191, 36, 0.10);
+        }
         .daily-gain {
             position: absolute; top: 0.55rem; right: 0.75rem;
             font-size: 0.68rem; font-weight: 700; letter-spacing: 0.4px;
@@ -47,6 +51,7 @@
         .counter-label {
             font-size: 0.85rem; letter-spacing: 3px; text-transform: uppercase;
             color: var(--text-dim); margin-bottom: 0.6rem; font-weight: 600;
+            text-align: center;
         }
         .counter {
             font-size: 2.1rem; font-weight: 700; font-variant-numeric: tabular-nums;
@@ -55,6 +60,13 @@
         }
         .counter.blue { color: var(--accent-2); text-shadow: 0 0 18px rgba(96, 165, 250, 0.35); }
         .counter.white { color: #fde68a; text-shadow: 0 0 18px rgba(253, 230, 138, 0.3); }
+        .counter.warm  { color: var(--accent-warm); text-shadow: 0 0 18px rgba(251, 191, 36, 0.35); }
+        .counter.warm.flash { animation: totalFlash 1.4s ease; }
+        @keyframes totalFlash {
+            0%   { text-shadow: 0 0 18px rgba(251, 191, 36, 0.35); color: var(--accent-warm); }
+            35%  { text-shadow: 0 0 34px rgba(251, 191, 36, 0.95); color: #fef3c7; }
+            100% { text-shadow: 0 0 18px rgba(251, 191, 36, 0.35); color: var(--accent-warm); }
+        }
         .btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; width: 100%; max-width: 640px; }
         .withdraw-btn {
             flex: 1 1 260px; padding: 1.15rem 2rem;
@@ -172,6 +184,12 @@
         <div class="counter-label">Ваш Базовый Доход</div>
         <div class="counter white" id="counter3">0</div>
     </div>
+    <!-- === НОВЫЙ СЧЁТЧИК: Сумма полученного дохода === -->
+    <div class="counter-box counter-box-total">
+        <div class="counter-label">Сумма полученного дохода</div>
+        <div class="counter warm" id="counterTotal">0</div>
+    </div>
+
     <div class="btn-row">
         <button class="withdraw-btn" id="withdrawBtn">Получить долю Богатства Страны</button>
         <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход и завершить участие</button>
@@ -246,24 +264,48 @@
         }
 
         // ============================================================
+        // КЛЮЧИ LOCALSTORAGE
+        // ============================================================
+        const LS_TOTAL_KEY = "ubiru_totalReceived";
+
+        function readLocalTotal() {
+            try {
+                const v = Number(localStorage.getItem(LS_TOTAL_KEY) || 0);
+                return Number.isFinite(v) && v >= 0 ? v : 0;
+            } catch (e) { return 0; }
+        }
+        function writeLocalTotal(v) {
+            try { localStorage.setItem(LS_TOTAL_KEY, String(v || 0)); } catch (e) {}
+        }
+
+        // ============================================================
         // СЕРВЕРНЫЙ ПРОГРЕСС
         // ============================================================
         let SERVER_PROGRESS = {
             withdrawn: false,
             finishValue: null,
             cooldownUntil: 0,
-            counter3SpeedVersion: ""
+            counter3SpeedVersion: "",
+            totalReceived: 0        // === НОВОЕ ПОЛЕ ===
         };
 
         async function loadProgress() {
             const data = await apiPost("/api/progress/get");
             if (!data) return;
 
+            // totalReceived: сервер — источник истины, localStorage — резерв.
+            // Берём максимум, т.к. величина монотонно растёт и не может уменьшаться.
+            const serverTotal = (typeof data.totalReceived === "number" && data.totalReceived >= 0)
+                ? data.totalReceived
+                : 0;
+            const localTotal = readLocalTotal();
+
             SERVER_PROGRESS = {
                 withdrawn:            !!data.withdrawn,
                 finishValue:          (typeof data.finishValue === "number") ? data.finishValue : null,
                 cooldownUntil:        data.cooldownUntil || 0,
-                counter3SpeedVersion: data.counter3SpeedVersion || ""
+                counter3SpeedVersion: data.counter3SpeedVersion || "",
+                totalReceived:        Math.max(serverTotal, localTotal)
             };
 
             if (data.counter3Start !== null && typeof data.counter3Start === "number") {
@@ -277,16 +319,18 @@
                 counter3.active    = false;
                 counter3.perSecond = COUNTER3_NEW_SPEED;
             }
+
+            renderTotalReceived();
         }
 
         async function saveProgress(keepalive = false) {
-            // Фиксируем накопленное в baseValue, чтобы не потерять при уходе
             if (counter3.active && counter3.startDate !== null) {
                 const now = Date.now();
                 const secondsPassed = (now - counter3.startDate) / 1000;
                 counter3.baseValue = counter3.baseValue + counter3.perSecond * secondsPassed;
                 counter3.startDate = now;
             }
+            writeLocalTotal(SERVER_PROGRESS.totalReceived || 0);
             await apiPost("/api/progress/save", {
                 withdrawn:            SERVER_PROGRESS.withdrawn,
                 finishValue:          SERVER_PROGRESS.finishValue,
@@ -295,7 +339,8 @@
                 counter3Start:        counter3.startDate,
                 counter3Active:       counter3.active,
                 counter3PerSecond:    counter3.perSecond,
-                counter3SpeedVersion: COUNTER3_SPEED_VERSION
+                counter3SpeedVersion: COUNTER3_SPEED_VERSION,
+                totalReceived:        SERVER_PROGRESS.totalReceived || 0   // === НОВОЕ ПОЛЕ ===
             }, { keepalive });
         }
 
@@ -385,6 +430,22 @@
                 c.el.textContent = formatNumber(getCurrentValue(c), c.digits);
             }
             renderDailyGain();
+        }
+
+        // === ОТРИСОВКА И АНИМАЦИЯ НАКОПЛЕННОЙ СУММЫ ===
+        const counterTotalEl = document.getElementById("counterTotal");
+        function renderTotalReceived() {
+            if (!counterTotalEl) return;
+            counterTotalEl.textContent = formatNumber(
+                SERVER_PROGRESS.totalReceived || 0,
+                counter3.digits
+            );
+        }
+        function flashTotalReceived() {
+            if (!counterTotalEl) return;
+            counterTotalEl.classList.remove("flash");
+            void counterTotalEl.offsetWidth; // принудительный reflow, чтобы анимация перезапустилась
+            counterTotalEl.classList.add("flash");
         }
 
         setInterval(update, 250);
@@ -533,23 +594,43 @@
             openConfirmModal();
         });
 
+        // === ЗАЩИТА ОТ ДВОЙНОГО ВЫЗОВА ===
+        let finishInProgress = false;
+
         async function performFinish() {
-            const finalValue = getCurrentValue(counter3);
-            counter3.baseValue = 0;
-            counter3.startDate = null;
-            counter3.active    = false;
-            counter3.el.textContent = formatNumber(0, counter3.digits);
+            if (finishInProgress) return;
+            finishInProgress = true;
+            try {
+                const finalValue = getCurrentValue(counter3);
+                if (!(finalValue > 0)) return;
 
-            SERVER_PROGRESS.withdrawn     = false;
-            SERVER_PROGRESS.finishValue   = finalValue;
-            SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
+                counter3.baseValue = 0;
+                counter3.startDate = null;
+                counter3.active    = false;
+                counter3.el.textContent = formatNumber(0, counter3.digits);
 
-            await saveProgress();
+                SERVER_PROGRESS.withdrawn     = false;
+                SERVER_PROGRESS.finishValue   = finalValue;
+                SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
 
-            refreshWithdrawBtn();
-            setFinishBtnFrozen(finalValue);
-            showVoucherBtn(finalValue);
-            trackEvent("finish", String(finalValue));
+                // === ГЛАВНОЕ: накапливаем сумму полученного дохода ===
+                SERVER_PROGRESS.totalReceived =
+                    (SERVER_PROGRESS.totalReceived || 0) + finalValue;
+
+                await saveProgress();
+
+                refreshWithdrawBtn();
+                setFinishBtnFrozen(finalValue);
+                showVoucherBtn(finalValue);
+
+                renderTotalReceived();
+                flashTotalReceived();
+
+                trackEvent("finish", String(finalValue));
+                trackEvent("total_received", String(SERVER_PROGRESS.totalReceived));
+            } finally {
+                finishInProgress = false;
+            }
         }
 
         modalNo.addEventListener("click", () => closeConfirmModal());
@@ -568,7 +649,7 @@
         });
 
         // ============================================================
-        // НОВОСТИ И О ПРОЕКТЕ (без изменений)
+        // НОВОСТИ И О ПРОЕКТЕ
         // ============================================================
         const news = [
             { date: "21.10.2026", text: "⚡️Запуск канала. https://t.me/ubirus", isNew: true },
