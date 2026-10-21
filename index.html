@@ -168,6 +168,15 @@
         .modal-yes:hover { filter: brightness(1.08); }
         .modal-no { background: linear-gradient(135deg, #334155, #1e293b); color: #e2e8f0; box-shadow: 0 8px 22px rgba(51, 65, 85, 0.3); }
         .modal-no:hover { filter: brightness(1.15); }
+        .news-link {
+    color: var(--accent-2); /* Голубой цвет, как у счетчика населения */
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.2s ease;
+}
+.news-link:hover {
+    color: #93c5fd; /* Чуть светлее при наведении */
+}
     </style>
 </head>
 <body>
@@ -652,7 +661,7 @@
         // НОВОСТИ И О ПРОЕКТЕ
         // ============================================================
         const news = [
-            { date: "21.10.2026", text: "⚡️Запуск канала. https://t.me/ubirus", isNew: true },
+            { date: "21.10.2026", text: '⚡️Запуск канала. <a href="https://t.me/ubirus" target="_blank" class="news-link">https://t.me/ubirus</a>', isNew: true },
             { date: "20.10.2026", text: "⚡️Запуск чата."},
             { date: "19.10.2026", text: "⚡️Подключение сервера.Сохранение вашего прогресса с любых устройств."},
             { date: "18.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 2%⚡️."},
