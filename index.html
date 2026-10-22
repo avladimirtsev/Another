@@ -169,14 +169,14 @@
         .modal-no { background: linear-gradient(135deg, #334155, #1e293b); color: #e2e8f0; box-shadow: 0 8px 22px rgba(51, 65, 85, 0.3); }
         .modal-no:hover { filter: brightness(1.15); }
         .news-link {
-    color: var(--accent-2); /* Голубой цвет, как у счетчика населения */
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    transition: color 0.2s ease;
-}
-.news-link:hover {
-    color: #93c5fd; /* Чуть светлее при наведении */
-}
+            color: var(--accent-2);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            transition: color 0.2s ease;
+        }
+        .news-link:hover {
+            color: #93c5fd;
+        }
     </style>
 </head>
 <body>
@@ -295,15 +295,13 @@
             finishValue: null,
             cooldownUntil: 0,
             counter3SpeedVersion: "",
-            totalReceived: 0        // === НОВОЕ ПОЛЕ ===
+            totalReceived: 0
         };
 
         async function loadProgress() {
             const data = await apiPost("/api/progress/get");
             if (!data) return;
 
-            // totalReceived: сервер — источник истины, localStorage — резерв.
-            // Берём максимум, т.к. величина монотонно растёт и не может уменьшаться.
             const serverTotal = (typeof data.totalReceived === "number" && data.totalReceived >= 0)
                 ? data.totalReceived
                 : 0;
@@ -332,6 +330,7 @@
             renderTotalReceived();
         }
 
+        // Возвращает true при успешном сохранении
         async function saveProgress(keepalive = false) {
             if (counter3.active && counter3.startDate !== null) {
                 const now = Date.now();
@@ -340,7 +339,8 @@
                 counter3.startDate = now;
             }
             writeLocalTotal(SERVER_PROGRESS.totalReceived || 0);
-            await apiPost("/api/progress/save", {
+            
+            const res = await apiPost("/api/progress/save", {
                 withdrawn:            SERVER_PROGRESS.withdrawn,
                 finishValue:          SERVER_PROGRESS.finishValue,
                 cooldownUntil:        SERVER_PROGRESS.cooldownUntil || 0,
@@ -349,8 +349,10 @@
                 counter3Active:       counter3.active,
                 counter3PerSecond:    counter3.perSecond,
                 counter3SpeedVersion: COUNTER3_SPEED_VERSION,
-                totalReceived:        SERVER_PROGRESS.totalReceived || 0   // === НОВОЕ ПОЛЕ ===
+                totalReceived:        SERVER_PROGRESS.totalReceived || 0
             }, { keepalive });
+
+            return res !== null; // true, если сервер ответил успешно
         }
 
         // ============================================================
@@ -441,7 +443,6 @@
             renderDailyGain();
         }
 
-        // === ОТРИСОВКА И АНИМАЦИЯ НАКОПЛЕННОЙ СУММЫ ===
         const counterTotalEl = document.getElementById("counterTotal");
         function renderTotalReceived() {
             if (!counterTotalEl) return;
@@ -453,7 +454,7 @@
         function flashTotalReceived() {
             if (!counterTotalEl) return;
             counterTotalEl.classList.remove("flash");
-            void counterTotalEl.offsetWidth; // принудительный reflow, чтобы анимация перезапустилась
+            void counterTotalEl.offsetWidth; 
             counterTotalEl.classList.add("flash");
         }
 
@@ -461,22 +462,22 @@
         update();
 
         // ============================================================
-        // ПЕРИОДИЧЕСКОЕ СОХРАНЕНИЕ counter3 (раз в 20 сек)
+        // ПЕРИОДИЧЕСКОЕ СОХРАНЕНИЕ (раз в 20 сек)
         // ============================================================
         setInterval(() => {
             if (counter3.active) saveProgress();
         }, 20 * 1000);
 
         // ============================================================
-        // СОХРАНЕНИЕ ПРИ УХОДЕ ИЗ MINI APP
+        // СОХРАНЕНИЕ ПРИ УХОДЕ ИЗ MINI APP (ВСЕГДА)
         // ============================================================
         document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "hidden" && counter3.active) {
+            if (document.visibilityState === "hidden") {
                 saveProgress(true);
             }
         });
         window.addEventListener("pagehide", () => {
-            if (counter3.active) saveProgress(true);
+            saveProgress(true); 
         });
 
         // ============================================================
@@ -610,8 +611,17 @@
             if (finishInProgress) return;
             finishInProgress = true;
             try {
-                const finalValue = getCurrentValue(counter3);
+                let finalValue = getCurrentValue(counter3);
                 if (!(finalValue > 0)) return;
+
+                // Округляем, чтобы избежать багов с плавающей точкой
+                finalValue = Number(finalValue.toFixed(10)); 
+
+                // Сохраняем старые значения, чтобы откатить, если сервер упадет
+                const oldBaseValue = counter3.baseValue;
+                const oldStartDate = counter3.startDate;
+                const oldActive    = counter3.active;
+                const oldTotal     = SERVER_PROGRESS.totalReceived || 0;
 
                 counter3.baseValue = 0;
                 counter3.startDate = null;
@@ -622,11 +632,23 @@
                 SERVER_PROGRESS.finishValue   = finalValue;
                 SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
 
-                // === ГЛАВНОЕ: накапливаем сумму полученного дохода ===
-                SERVER_PROGRESS.totalReceived =
-                    (SERVER_PROGRESS.totalReceived || 0) + finalValue;
+                // Накапливаем сумму с округлением
+                SERVER_PROGRESS.totalReceived = Number((oldTotal + finalValue).toFixed(10));
 
-                await saveProgress();
+                // Ждем сохранения и проверяем результат
+                const success = await saveProgress();
+                
+                if (!success) {
+                    // Если сервер не ответил — откатываем всё назад!
+                    counter3.baseValue = oldBaseValue;
+                    counter3.startDate = oldStartDate;
+                    counter3.active    = oldActive;
+                    SERVER_PROGRESS.totalReceived = oldTotal;
+                    
+                    alert("Ошибка соединения. Ваш доход не был выведен, попробуйте еще раз.");
+                    update(); // Возвращаем счетчик на экран
+                    return;
+                }
 
                 refreshWithdrawBtn();
                 setFinishBtnFrozen(finalValue);
