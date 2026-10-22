@@ -634,7 +634,7 @@
                 SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
 
                 // Накапливаем сумму с округлением
-                SERVER_PROGRESS.totalReceived = Number((oldTotal + finalValue).toFixed(10));
+                SERVER_PROGRESS.totalReceived = Number((oldTotal + finalValue).toFixed(18));
 
                 // Ждем сохранения и проверяем результат
                 let success = await saveProgress();
