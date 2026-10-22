@@ -444,7 +444,7 @@
             if (!c.active || typeof c.perSecond !== "number") { el.textContent = ""; return; }
             const gain = c.perSecond * SECONDS_PER_DAY;
             const sign = gain >= 0 ? "+" : "−";
-            el.textContent = sign + formatNumber(Math.abs(gain), 4) + " за прошлые сутки";
+            el.textContent = sign + formatNumber(Math.abs(gain), 4) + " за сутки";
         }
 
         function update() {
