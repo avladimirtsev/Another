@@ -614,15 +614,15 @@
                 let finalValue = getCurrentValue(counter3);
                 if (!(finalValue > 0)) return;
 
-                // Округляем, чтобы избежать багов с плавающей точкой
-                finalValue = Number(finalValue.toFixed(18)); 
+                // Округляем до 10 знаков (безопасное число для JS и БД)
+                finalValue = Number(finalValue.toFixed(10)); 
 
-                // Сохраняем старые значения, чтобы откатить, если сервер упадет
+                // Сохраняем старые значения для отката
                 const oldBaseValue = counter3.baseValue;
                 const oldStartDate = counter3.startDate;
                 const oldActive    = counter3.active;
                 const oldTotal     = SERVER_PROGRESS.totalReceived || 0;
-                const oldCooldown  = SERVER_PROGRESS.cooldownUntil; // Запоминаем старый кулдаун
+                const oldCooldown  = SERVER_PROGRESS.cooldownUntil; 
 
                 counter3.baseValue = 0;
                 counter3.startDate = null;
@@ -633,8 +633,8 @@
                 SERVER_PROGRESS.finishValue   = finalValue;
                 SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
 
-                // Накапливаем сумму с округлением
-                SERVER_PROGRESS.totalReceived = Number((oldTotal + finalValue).toFixed(18));
+                // ВАЖНО: убрали toFixed(18), теперь это чистое число
+                SERVER_PROGRESS.totalReceived = oldTotal + finalValue;
 
                 // Ждем сохранения и проверяем результат
                 let success = await saveProgress();
@@ -647,15 +647,15 @@
                 }
 
                 if (!success) {
-                    // Если и вторая попытка провалилась — откатываем всё назад!
+                    // Откат при провале
                     counter3.baseValue = oldBaseValue;
                     counter3.startDate = oldStartDate;
                     counter3.active    = oldActive;
                     SERVER_PROGRESS.totalReceived = oldTotal;
-                    SERVER_PROGRESS.cooldownUntil = oldCooldown; // Откатываем кулдаун
+                    SERVER_PROGRESS.cooldownUntil = oldCooldown;
                     
                     alert("Ошибка соединения. Проверьте интернет и попробуйте еще раз.");
-                    refreshWithdrawBtn(); // Сразу обновляем кнопку (убираем "Доступно через")
+                    refreshWithdrawBtn(); 
                     update(); 
                     return;
                 }
