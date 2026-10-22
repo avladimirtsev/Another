@@ -615,7 +615,7 @@
                 if (!(finalValue > 0)) return;
 
                 // Округляем, чтобы избежать багов с плавающей точкой
-                finalValue = Number(finalValue.toFixed(10)); 
+                finalValue = Number(finalValue.toFixed(18)); 
 
                 // Сохраняем старые значения, чтобы откатить, если сервер упадет
                 const oldBaseValue = counter3.baseValue;
