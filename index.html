@@ -228,6 +228,21 @@
         </div>
     </div>
 
+    <!-- Модальное окно успешного получения ваучера -->
+    <div class="modal-overlay" id="voucherSuccessModal">
+        <div class="modal" style="text-align: center; border-color: rgba(251, 191, 36, 0.4);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
+            <h2 style="color: var(--accent-warm); margin-top: 0; letter-spacing: 1px;">Поздравляем!</h2>
+            <p style="color: var(--text-soft); margin-bottom: 2rem; font-size: 1.05rem; line-height: 1.6;">
+                Ваш ваучер на сумму <strong id="modalVoucherAmount" style="color: var(--accent-warm);"></strong> успешно активирован и добавлен в вашу общую копилку.<br><br>Скоро включим монетизацию!
+            </p>
+            <div class="modal-actions" style="flex-direction: column;">
+                <button class="modal-yes" id="goToChannelBtn" style="background: linear-gradient(135deg, #60a5fa, #3b82f6);">Перейти в канал проекта</button>
+                <button class="modal-no" id="closeVoucherBtn" style="background: transparent; color: var(--text-dim); box-shadow: none; margin-top: 0.5rem;">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         // TELEGRAM INIT
@@ -691,11 +706,30 @@
             if (e.key === "Escape" && modal.classList.contains("show")) closeConfirmModal();
         });
 
-        // === ОБРАБОТКА ЖЕЛТОЙ КНОПКИ (Получение ваучера) ===
+        // ============================================================
+        // ОБРАБОТКА ЖЕЛТОЙ КНОПКИ (Получение ваучера + Окно)
+        // ============================================================
+        const voucherSuccessModal = document.getElementById("voucherSuccessModal");
+        const modalVoucherAmount = document.getElementById("modalVoucherAmount");
+        const goToChannelBtn = document.getElementById("goToChannelBtn");
+        const closeVoucherBtn = document.getElementById("closeVoucherBtn");
+
         voucherBtn.addEventListener("click", async () => {
             trackEvent("voucher", voucherBtn.textContent);
             
-            // Скрываем ваучер и сбрасываем статус, чтобы можно было начать заново
+            // 1. Подставляем сумму в модальное окно
+            // Берем значение из finishValue, так как там хранится точная сумма этого вывода
+            if (SERVER_PROGRESS.finishValue !== null) {
+                modalVoucherAmount.textContent = formatNumber(SERVER_PROGRESS.finishValue, counter3.digits);
+            } else {
+                modalVoucherAmount.textContent = "0,0000000000";
+            }
+
+            // 2. Показываем окно
+            voucherSuccessModal.classList.add("show");
+            document.body.classList.add("modal-open");
+            
+            // 3. Скрываем ваучер и сбрасываем статус (чтобы можно было начать заново)
             hideVoucherBtn();
             setFinishBtnDefault(false); 
             
@@ -703,8 +737,24 @@
             SERVER_PROGRESS.withdrawn = false; 
             
             await saveProgress(); 
-            
             setWithdrawBtnDefault(); 
+        });
+
+        // Закрытие окна успеха
+        closeVoucherBtn.addEventListener("click", () => {
+            voucherSuccessModal.classList.remove("show");
+            document.body.classList.remove("modal-open");
+        });
+
+        // Переход в канал
+        goToChannelBtn.addEventListener("click", () => {
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.openTelegramLink("https://t.me/ubirus");
+            } else {
+                window.open("https://t.me/ubirus", "_blank");
+            }
+            voucherSuccessModal.classList.remove("show");
+            document.body.classList.remove("modal-open");
         });
 
         // ============================================================
