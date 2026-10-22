@@ -622,6 +622,7 @@
                 const oldStartDate = counter3.startDate;
                 const oldActive    = counter3.active;
                 const oldTotal     = SERVER_PROGRESS.totalReceived || 0;
+                const oldCooldown  = SERVER_PROGRESS.cooldownUntil; // Запоминаем старый кулдаун
 
                 counter3.baseValue = 0;
                 counter3.startDate = null;
@@ -636,17 +637,26 @@
                 SERVER_PROGRESS.totalReceived = Number((oldTotal + finalValue).toFixed(10));
 
                 // Ждем сохранения и проверяем результат
-                const success = await saveProgress();
+                let success = await saveProgress();
                 
+                // Если не получилось с первого раза, пробуем еще раз через секунду
                 if (!success) {
-                    // Если сервер не ответил — откатываем всё назад!
+                    console.warn("Первая попытка не удалась. Пробуем еще раз...");
+                    await new Promise(r => setTimeout(r, 1000));
+                    success = await saveProgress();
+                }
+
+                if (!success) {
+                    // Если и вторая попытка провалилась — откатываем всё назад!
                     counter3.baseValue = oldBaseValue;
                     counter3.startDate = oldStartDate;
                     counter3.active    = oldActive;
                     SERVER_PROGRESS.totalReceived = oldTotal;
+                    SERVER_PROGRESS.cooldownUntil = oldCooldown; // Откатываем кулдаун
                     
-                    alert("Ошибка соединения. Ваш доход не был выведен, попробуйте еще раз.");
-                    update(); // Возвращаем счетчик на экран
+                    alert("Ошибка соединения. Проверьте интернет и попробуйте еще раз.");
+                    refreshWithdrawBtn(); // Сразу обновляем кнопку (убираем "Доступно через")
+                    update(); 
                     return;
                 }
 
