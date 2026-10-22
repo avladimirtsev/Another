@@ -565,11 +565,18 @@
         }, 1000);
 
         // ============================================================
-        // КЛИК ПО ПЕРВОЙ КНОПКЕ
+        // КЛИК ПО ПЕРВОЙ КНОПКЕ (с защитой)
         // ============================================================
         btn.addEventListener("click", async () => {
             if (btn.disabled) return;
             if (cooldownRemaining() > 0) return;
+            
+            // ЗАЩИТА: Если есть непогашенный ваучер, не даем обнулить счетчик
+            if (SERVER_PROGRESS.finishValue !== null) {
+                alert("Сначала получите ваш ваучер, нажав на желтую кнопку ниже!");
+                return;
+            }
+
             trackEvent("click1");
             setWithdrawBtnActive();
 
@@ -633,7 +640,7 @@
                 SERVER_PROGRESS.finishValue   = finalValue;
                 SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
 
-                // ВАЖНО: убрали toFixed(18), теперь это чистое число
+                // Накапливаем сумму (безопасное сложение)
                 SERVER_PROGRESS.totalReceived = oldTotal + finalValue;
 
                 // Ждем сохранения и проверяем результат
@@ -684,9 +691,20 @@
             if (e.key === "Escape" && modal.classList.contains("show")) closeConfirmModal();
         });
 
-        voucherBtn.addEventListener("click", () => {
+        // === ОБРАБОТКА ЖЕЛТОЙ КНОПКИ (Получение ваучера) ===
+        voucherBtn.addEventListener("click", async () => {
             trackEvent("voucher", voucherBtn.textContent);
-            console.log("Получен ваучер на сумму", voucherBtn.textContent);
+            
+            // Скрываем ваучер и сбрасываем статус, чтобы можно было начать заново
+            hideVoucherBtn();
+            setFinishBtnDefault(false); 
+            
+            SERVER_PROGRESS.finishValue = null;
+            SERVER_PROGRESS.withdrawn = false; 
+            
+            await saveProgress(); 
+            
+            setWithdrawBtnDefault(); 
         });
 
         // ============================================================
