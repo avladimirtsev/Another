@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Счётчик прироста богатства</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- ПОДКЛЮЧАЕМ БИБЛИОТЕКУ TON CONNECT -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <style>
         :root {
@@ -179,23 +178,9 @@
         .modal-yes:hover { filter: brightness(1.08); }
         .modal-no { background: linear-gradient(135deg, #334155, #1e293b); color: #e2e8f0; box-shadow: 0 8px 22px rgba(51, 65, 85, 0.3); }
         .modal-no:hover { filter: brightness(1.15); }
-        .news-link {
-            color: var(--accent-2);
-            text-decoration: underline;
-            text-underline-offset: 3px;
-            transition: color 0.2s ease;
-        }
-        .news-link:hover {
-            color: #93c5fd;
-        }
-        /* Стили для контейнера кнопки TON Connect */
-        #ton-connect-button {
-            width: 100%;
-            max-width: var(--box-width);
-            display: flex;
-            justify-content: center;
-            margin-bottom: -0.5rem;
-        }
+        .news-link { color: var(--accent-2); text-decoration: underline; text-underline-offset: 3px; transition: color 0.2s ease; }
+        .news-link:hover { color: #93c5fd; }
+        #ton-connect-button { width: 100%; max-width: var(--box-width); display: flex; justify-content: center; margin-bottom: -0.5rem; }
         @media (max-width: 360px) {
             .counter       { font-size: 1.8rem; }
             .counter-label { font-size: 0.78rem; letter-spacing: 2px; }
@@ -216,13 +201,11 @@
         <div class="counter-label">Ваш Базовый Доход</div>
         <div class="counter white" id="counter3">0</div>
     </div>
-    <!-- === НОВЫЙ СЧЁТЧИК: Сумма полученного дохода === -->
     <div class="counter-box counter-box-total">
         <div class="counter-label">Сумма полученного дохода</div>
         <div class="counter warm" id="counterTotal">0</div>
     </div>
 
-    <!-- КОНТЕЙНЕР ДЛЯ КНОПКИ TON CONNECT -->
     <div id="ton-connect-button"></div>
 
     <div class="btn-row">
@@ -239,7 +222,6 @@
         <div class="about-content" id="aboutContent"></div>
     </div>
     
-    <!-- Модальное окно подтверждения вывода -->
     <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <div class="modal">
             <div class="modal-text">
@@ -256,7 +238,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно успешного получения ваучера -->
     <div class="modal-overlay" id="voucherSuccessModal">
         <div class="modal" style="text-align: center; border-color: rgba(251, 191, 36, 0.4);">
             <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
@@ -271,7 +252,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно: сумма меньше минимальной для вывода -->
     <div class="modal-overlay" id="minWithdrawModal" role="dialog" aria-modal="true" aria-labelledby="minWithdrawTitle">
         <div class="modal" style="text-align: center; border-color: rgba(96, 165, 250, 0.35);">
             <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
@@ -287,9 +267,6 @@
     </div>
 
     <script>
-        // ============================================================
-        // TELEGRAM INIT
-        // ============================================================
         const tg = window.Telegram?.WebApp;
         let telegramUser = null;
         let initData = "";
@@ -301,9 +278,6 @@
             initData = tg.initData || "";
         }
 
-        // ============================================================
-        // ИНИЦИАЛИЗАЦИЯ TON CONNECT (ЭТАП 8.2)
-        // ============================================================
         let tonConnectUI = null;
         try {
             tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
@@ -311,11 +285,9 @@
                 buttonRootId: 'ton-connect-button'
             });
 
-            // Следим за изменением статуса кошелька
             tonConnectUI.onStatusChange(wallet => {
                 if (wallet) {
                     console.log("✅ Кошелёк подключен!", wallet.account.address);
-                    // В будущем мы отправим этот адрес на сервер для привязки
                 } else {
                     console.log("❌ Кошелёк отключен.");
                 }
@@ -324,12 +296,8 @@
             console.error("Ошибка инициализации TON Connect:", e);
         }
 
-        // ============================================================
-        // API И ГЛОБАЛЬНОЕ СОСТОЯНИЕ
-        // ============================================================
         const API_BASE = "https://ubiru-backend.a-vladimirtsev.workers.dev";
         
-        // Локальный кэш для отображения. Источник правды - сервер!
         let view = {
             withdrawn: false,
             finishValue: null,
@@ -339,7 +307,6 @@
             totalReceived: 0
         };
         
-        // Для плавной анимации на экране
         let lastServerValue = 0;
         let lastServerAt = Date.now();
         const COUNTER3_NEW_SPEED = 0.00000000000161875162;
@@ -364,8 +331,8 @@
             apiPost("/api/track", { event, extra });
         }
 
-        async function apiAction(action) {
-            const res = await apiPost("/api/progress/" + action);
+        async function apiAction(action, extraPayload = {}) {
+            const res = await apiPost("/api/progress/" + action, extraPayload);
             if (res && !res.error) applyServerState(res);
             return res;
         }
@@ -386,15 +353,11 @@
             refreshWithdrawBtn();
         }
 
-        // ============================================================
-        // ОТРИСОВКА
-        // ============================================================
         function formatNumber(value, digits) {
             return value.toLocaleString("ru-RU", { minimumFractionDigits: digits, maximumFractionDigits: digits });
         }
 
         function update() {
-            // Счетчик 1 (Богатство)
             const c1 = document.getElementById("counter1");
             if (c1) {
                 const start1 = new Date("2026-10-13T00:00:00+03:00").getTime();
@@ -402,7 +365,6 @@
                 c1.textContent = formatNumber(1000 + 0.000231481481481 * sec1, 4);
             }
 
-            // Счетчик 2 (Население)
             const c2 = document.getElementById("counter2");
             if (c2) {
                 const start2 = new Date("2026-10-14T00:00:00+03:00").getTime();
@@ -410,7 +372,6 @@
                 c2.textContent = formatNumber(143000000 - 0.011 * sec2, 0);
             }
 
-            // Счетчик 3 (Ваш доход - локальная анимация на основе данных сервера)
             const c3 = document.getElementById("counter3");
             if (c3) {
                 let display = view.counter3CurrentValue;
@@ -421,7 +382,6 @@
                 c3.textContent = formatNumber(display, 10);
             }
 
-            // Дневной прирост
             const daily = document.getElementById("dailyGain1");
             if (daily) {
                 const gain = 0.000231481481481 * 86400;
@@ -443,9 +403,6 @@
         setInterval(update, 250);
         update();
 
-        // ============================================================
-        // ЭЛЕМЕНТЫ УПРАВЛЕНИЯ
-        // ============================================================
         const btn = document.getElementById("withdrawBtn");
         const finishBtn = document.getElementById("finishBtn");
         const voucherBtn = document.getElementById("voucherBtn");
@@ -496,9 +453,6 @@
 
         setInterval(refreshWithdrawBtn, 1000);
 
-        // ============================================================
-        // ОБРАБОТЧИКИ КНОПОК
-        // ============================================================
         btn.addEventListener("click", async () => {
             if (btn.disabled) return;
             trackEvent("click1");
@@ -507,7 +461,6 @@
             if (!res || res.error) refreshWithdrawBtn();
         });
 
-        // Вспомогательная функция для показа красивого окна порога
         function showMinWithdrawNotice(thresholdValue) {
             const thresholdStr = thresholdValue.toLocaleString("ru-RU", { maximumFractionDigits: 10 });
             document.getElementById("minWithdrawText").textContent = 
@@ -524,8 +477,6 @@
 
         finishBtn.addEventListener("click", () => {
             if (finishBtn.disabled) return;
-            
-            // Если сумма меньше порога — показываем НАШЕ синее окно
             if (view.counter3CurrentValue < MIN_WITHDRAW_AMOUNT) {
                 showMinWithdrawNotice(MIN_WITHDRAW_AMOUNT);
                 return;
@@ -552,7 +503,6 @@
                 const res = await apiAction("finish");
                 if (!res || res.error) {
                     if (res?.error === "min_withdraw") {
-                        // Сервер тоже может сказать "мало денег" - показываем наше окно
                         showMinWithdrawNotice(res.minAmount);
                     } else if (res?.error === "cooldown") {
                         refreshWithdrawBtn();
@@ -569,8 +519,16 @@
         });
 
         voucherBtn.addEventListener("click", async () => {
+            if (!tonConnectUI || !tonConnectUI.account) {
+                alert("Сначала подключите ваш TON-кошелёк, нажав на кнопку 'Connect Wallet' выше!");
+                return;
+            }
+
+            const walletAddress = tonConnectUI.account.address;
             trackEvent("voucher", String(view.finishValue));
-            const res = await apiAction("claim-voucher");
+            
+            const res = await apiAction("claim-voucher", { walletAddress });
+            
             if (!res || res.error) {
                 alert("Не удалось подтвердить ваучер. Попробуйте ещё раз.");
                 return;
@@ -591,9 +549,6 @@
             document.body.classList.remove("modal-open");
         });
 
-        // ============================================================
-        // НОВОСТИ И ИНИЦИАЛИЗАЦИЯ
-        // ============================================================
         const news = [
             { date: "22.10.2026", text: "⚡️Добавлено поле Сумма полученного дохода. Это все Ваши выводы дохода за всё время.", isNew: true },
             { date: "21.10.2026", text: '⚡️Запуск канала. <a href="https://t.me/ubirus" target="_blank" class="news-link">https://t.me/ubirus</a>'},
@@ -643,7 +598,6 @@
             const res = await apiPost("/api/progress/get");
             if (res && !res.error) applyServerState(res);
             
-            // Опрашиваем сервер раз в 30 секунд
             setInterval(async () => {
                 const r = await apiPost("/api/progress/get");
                 if (r && !r.error) applyServerState(r);
