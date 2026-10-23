@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Счётчик прироста богатства</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- ПОДКЛЮЧАЕМ БИБЛИОТЕКУ TON CONNECT -->
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <style>
         :root {
             --bg:            #0e1420;
@@ -186,6 +188,14 @@
         .news-link:hover {
             color: #93c5fd;
         }
+        /* Стили для контейнера кнопки TON Connect */
+        #ton-connect-button {
+            width: 100%;
+            max-width: var(--box-width);
+            display: flex;
+            justify-content: center;
+            margin-bottom: -0.5rem;
+        }
         @media (max-width: 360px) {
             .counter       { font-size: 1.8rem; }
             .counter-label { font-size: 0.78rem; letter-spacing: 2px; }
@@ -211,6 +221,9 @@
         <div class="counter-label">Сумма полученного дохода</div>
         <div class="counter warm" id="counterTotal">0</div>
     </div>
+
+    <!-- КОНТЕЙНЕР ДЛЯ КНОПКИ TON CONNECT -->
+    <div id="ton-connect-button"></div>
 
     <div class="btn-row">
         <button class="withdraw-btn" id="withdrawBtn">Получить долю Богатства Страны</button>
@@ -289,6 +302,29 @@
         }
 
         // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ TON CONNECT (ЭТАП 8.2)
+        // ============================================================
+        let tonConnectUI = null;
+        try {
+            tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                manifestUrl: 'https://ubiru-backend.a-vladimirtsev.workers.dev/tonconnect-manifest.json',
+                buttonRootId: 'ton-connect-button'
+            });
+
+            // Следим за изменением статуса кошелька
+            tonConnectUI.onStatusChange(wallet => {
+                if (wallet) {
+                    console.log("✅ Кошелёк подключен!", wallet.account.address);
+                    // В будущем мы отправим этот адрес на сервер для привязки
+                } else {
+                    console.log("❌ Кошелёк отключен.");
+                }
+            });
+        } catch (e) {
+            console.error("Ошибка инициализации TON Connect:", e);
+        }
+
+        // ============================================================
         // API И ГЛОБАЛЬНОЕ СОСТОЯНИЕ
         // ============================================================
         const API_BASE = "https://ubiru-backend.a-vladimirtsev.workers.dev";
@@ -307,7 +343,7 @@
         let lastServerValue = 0;
         let lastServerAt = Date.now();
         const COUNTER3_NEW_SPEED = 0.00000000000161875162;
-        const MIN_WITHDRAW_AMOUNT = 0.00000001;
+        const MIN_WITHDRAW_AMOUNT = 0.0001;
 
         async function apiPost(path, payload = {}) {
             try {
