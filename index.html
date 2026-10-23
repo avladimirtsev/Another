@@ -214,7 +214,7 @@
 
     <div class="btn-row">
         <button class="withdraw-btn" id="withdrawBtn">Получить долю Богатства Страны</button>
-        <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход и завершить участие</button>
+        <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход</button>
     </div>
     <button class="voucher-btn" id="voucherBtn"></button>
     <div class="news-box">
@@ -225,6 +225,8 @@
         <div class="news-title">О проекте</div>
         <div class="about-content" id="aboutContent"></div>
     </div>
+    
+    <!-- Модальное окно подтверждения вывода -->
     <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <div class="modal">
             <div class="modal-text">
@@ -272,323 +274,345 @@
     </div>
 
     <script>
-    // ============================================================
-    // TELEGRAM INIT
-    // ============================================================
-    const tg = window.Telegram?.WebApp;
-    let telegramUser = null;
-    let initData = "";
+        // ============================================================
+        // TELEGRAM INIT
+        // ============================================================
+        const tg = window.Telegram?.WebApp;
+        let telegramUser = null;
+        let initData = "";
 
-    if (tg) {
-        tg.ready();
-        tg.expand();
-        telegramUser = tg.initDataUnsafe?.user || null;
-        initData = tg.initData || "";
-    }
-
-    // ============================================================
-    // API И ГЛОБАЛЬНОЕ СОСТОЯНИЕ
-    // ============================================================
-    const API_BASE = "https://ubiru-backend.a-vladimirtsev.workers.dev";
-    
-    // Локальный кэш для отображения. Источник правды - сервер!
-    let view = {
-        withdrawn: false,
-        finishValue: null,
-        cooldownUntil: 0,
-        counter3Active: false,
-        counter3CurrentValue: 0,
-        totalReceived: 0
-    };
-    
-    // Для плавной анимации на экране
-    let lastServerValue = 0;
-    let lastServerAt = Date.now();
-    const COUNTER3_NEW_SPEED = 0.00000000000161875162;
-    const MIN_WITHDRAW_AMOUNT = 0.0001;
-
-    async function apiPost(path, payload = {}) {
-        try {
-            const res = await fetch(API_BASE + path, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...payload, initData })
-            });
-            if (!res.ok && res.status !== 400 && res.status !== 429) throw new Error("HTTP " + res.status);
-            return await res.json();
-        } catch (e) {
-            console.warn("API error:", path, e);
-            return null;
-        }
-    }
-
-    function trackEvent(event, extra = "") {
-        apiPost("/api/track", { event, extra });
-    }
-
-    async function apiAction(action) {
-        const res = await apiPost("/api/progress/" + action);
-        if (res && !res.error) applyServerState(res);
-        return res;
-    }
-
-    function applyServerState(s) {
-        view.withdrawn            = !!s.withdrawn;
-        view.finishValue          = (typeof s.finishValue === "number") ? s.finishValue : null;
-        view.cooldownUntil        = s.cooldownUntil || 0;
-        view.counter3Active       = !!s.counter3Active;
-        view.counter3CurrentValue = s.counter3CurrentValue || 0;
-        view.totalReceived        = s.totalReceived || 0;
-
-        lastServerValue = view.counter3CurrentValue;
-        lastServerAt = Date.now();
-
-        renderTotalReceived();
-        restoreFinishBtn();
-        refreshWithdrawBtn();
-    }
-
-    // ============================================================
-    // ОТРИСОВКА
-    // ============================================================
-    function formatNumber(value, digits) {
-        return value.toLocaleString("ru-RU", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-    }
-
-    function update() {
-        // Счетчик 1 (Богатство)
-        const c1 = document.getElementById("counter1");
-        if (c1) {
-            const start1 = new Date("2026-10-13T00:00:00+03:00").getTime();
-            const sec1 = (Date.now() - start1) / 1000;
-            c1.textContent = formatNumber(1000 + 0.000231481481481 * sec1, 4);
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            telegramUser = tg.initDataUnsafe?.user || null;
+            initData = tg.initData || "";
         }
 
-        // Счетчик 2 (Население)
-        const c2 = document.getElementById("counter2");
-        if (c2) {
-            const start2 = new Date("2026-10-14T00:00:00+03:00").getTime();
-            const sec2 = (Date.now() - start2) / 1000;
-            c2.textContent = formatNumber(143000000 - 0.011 * sec2, 0);
-        }
+        // ============================================================
+        // API И ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+        // ============================================================
+        const API_BASE = "https://ubiru-backend.a-vladimirtsev.workers.dev";
+        
+        // Локальный кэш для отображения. Источник правды - сервер!
+        let view = {
+            withdrawn: false,
+            finishValue: null,
+            cooldownUntil: 0,
+            counter3Active: false,
+            counter3CurrentValue: 0,
+            totalReceived: 0
+        };
+        
+        // Для плавной анимации на экране
+        let lastServerValue = 0;
+        let lastServerAt = Date.now();
+        const COUNTER3_NEW_SPEED = 0.00000000000161875162;
+        const MIN_WITHDRAW_AMOUNT = 0.0001;
 
-        // Счетчик 3 (Ваш доход - локальная анимация на основе данных сервера)
-        const c3 = document.getElementById("counter3");
-        if (c3) {
-            let display = view.counter3CurrentValue;
-            if (view.counter3Active) {
-                const elapsed = (Date.now() - lastServerAt) / 1000;
-                display = lastServerValue + COUNTER3_NEW_SPEED * elapsed;
+        async function apiPost(path, payload = {}) {
+            try {
+                const res = await fetch(API_BASE + path, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ...payload, initData })
+                });
+                if (!res.ok && res.status !== 400 && res.status !== 429) throw new Error("HTTP " + res.status);
+                return await res.json();
+            } catch (e) {
+                console.warn("API error:", path, e);
+                return null;
             }
-            c3.textContent = formatNumber(display, 10);
         }
 
-        // Дневной прирост
-        const daily = document.getElementById("dailyGain1");
-        if (daily) {
-            const gain = 0.000231481481481 * 86400;
-            daily.textContent = "+" + formatNumber(gain, 4) + " за сутки";
+        function trackEvent(event, extra = "") {
+            apiPost("/api/track", { event, extra });
         }
-    }
 
-    const counterTotalEl = document.getElementById("counterTotal");
-    function renderTotalReceived() {
-        if (counterTotalEl) counterTotalEl.textContent = formatNumber(view.totalReceived, 10);
-    }
-    function flashTotalReceived() {
-        if (!counterTotalEl) return;
-        counterTotalEl.classList.remove("flash");
-        void counterTotalEl.offsetWidth; 
-        counterTotalEl.classList.add("flash");
-    }
+        async function apiAction(action) {
+            const res = await apiPost("/api/progress/" + action);
+            if (res && !res.error) applyServerState(res);
+            return res;
+        }
 
-    setInterval(update, 250);
-    update();
+        function applyServerState(s) {
+            view.withdrawn            = !!s.withdrawn;
+            view.finishValue          = (typeof s.finishValue === "number") ? s.finishValue : null;
+            view.cooldownUntil        = s.cooldownUntil || 0;
+            view.counter3Active       = !!s.counter3Active;
+            view.counter3CurrentValue = s.counter3CurrentValue || 0;
+            view.totalReceived        = s.totalReceived || 0;
 
-    // ============================================================
-    // ЭЛЕМЕНТЫ УПРАВЛЕНИЯ
-    // ============================================================
-    const btn = document.getElementById("withdrawBtn");
-    const finishBtn = document.getElementById("finishBtn");
-    const voucherBtn = document.getElementById("voucherBtn");
-    const modal = document.getElementById("confirmModal");
-    const modalYes = document.getElementById("modalYes");
-    const modalNo = document.getElementById("modalNo");
+            lastServerValue = view.counter3CurrentValue;
+            lastServerAt = Date.now();
 
-    function cooldownRemaining() { return (view.cooldownUntil || 0) - Date.now(); }
+            renderTotalReceived();
+            restoreFinishBtn();
+            refreshWithdrawBtn();
+        }
 
-    function refreshWithdrawBtn() {
-        const left = cooldownRemaining();
-        if (left > 0) {
-            const totalSec = Math.max(0, Math.ceil(left / 1000));
-            const m = Math.floor(totalSec / 60);
-            const s = totalSec % 60;
-            btn.textContent = "Доступно через " + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-            btn.disabled = true;
-        } else {
-            if (view.finishValue !== null) {
-                btn.textContent = "Сначала заберите ваучер!";
-                btn.disabled = true;
-            } else if (view.withdrawn) {
-                btn.textContent = "Вам уже поступает доля Богатства 🇷🇺!";
+        // ============================================================
+        // ОТРИСОВКА
+        // ============================================================
+        function formatNumber(value, digits) {
+            return value.toLocaleString("ru-RU", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+        }
+
+        function update() {
+            // Счетчик 1 (Богатство)
+            const c1 = document.getElementById("counter1");
+            if (c1) {
+                const start1 = new Date("2026-10-13T00:00:00+03:00").getTime();
+                const sec1 = (Date.now() - start1) / 1000;
+                c1.textContent = formatNumber(1000 + 0.000231481481481 * sec1, 4);
+            }
+
+            // Счетчик 2 (Население)
+            const c2 = document.getElementById("counter2");
+            if (c2) {
+                const start2 = new Date("2026-10-14T00:00:00+03:00").getTime();
+                const sec2 = (Date.now() - start2) / 1000;
+                c2.textContent = formatNumber(143000000 - 0.011 * sec2, 0);
+            }
+
+            // Счетчик 3 (Ваш доход - локальная анимация на основе данных сервера)
+            const c3 = document.getElementById("counter3");
+            if (c3) {
+                let display = view.counter3CurrentValue;
+                if (view.counter3Active) {
+                    const elapsed = (Date.now() - lastServerAt) / 1000;
+                    display = lastServerValue + COUNTER3_NEW_SPEED * elapsed;
+                }
+                c3.textContent = formatNumber(display, 10);
+            }
+
+            // Дневной прирост
+            const daily = document.getElementById("dailyGain1");
+            if (daily) {
+                const gain = 0.000231481481481 * 86400;
+                daily.textContent = "+" + formatNumber(gain, 4) + " за сутки";
+            }
+        }
+
+        const counterTotalEl = document.getElementById("counterTotal");
+        function renderTotalReceived() {
+            if (counterTotalEl) counterTotalEl.textContent = formatNumber(view.totalReceived, 10);
+        }
+        function flashTotalReceived() {
+            if (!counterTotalEl) return;
+            counterTotalEl.classList.remove("flash");
+            void counterTotalEl.offsetWidth; 
+            counterTotalEl.classList.add("flash");
+        }
+
+        setInterval(update, 250);
+        update();
+
+        // ============================================================
+        // ЭЛЕМЕНТЫ УПРАВЛЕНИЯ
+        // ============================================================
+        const btn = document.getElementById("withdrawBtn");
+        const finishBtn = document.getElementById("finishBtn");
+        const voucherBtn = document.getElementById("voucherBtn");
+        const modal = document.getElementById("confirmModal");
+        const modalYes = document.getElementById("modalYes");
+        const modalNo = document.getElementById("modalNo");
+
+        function cooldownRemaining() { return (view.cooldownUntil || 0) - Date.now(); }
+
+        function refreshWithdrawBtn() {
+            const left = cooldownRemaining();
+            if (left > 0) {
+                const totalSec = Math.max(0, Math.ceil(left / 1000));
+                const m = Math.floor(totalSec / 60);
+                const s = totalSec % 60;
+                btn.textContent = "Доступно через " + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
                 btn.disabled = true;
             } else {
-                btn.textContent = "Получить долю Богатства Страны";
-                btn.disabled = false;
+                if (view.finishValue !== null) {
+                    btn.textContent = "Сначала заберите ваучер!";
+                    btn.disabled = true;
+                } else if (view.withdrawn) {
+                    btn.textContent = "Вам уже поступает доля Богатства 🇷🇺!";
+                    btn.disabled = true;
+                } else {
+                    btn.textContent = "Получить долю Богатства Страны";
+                    btn.disabled = false;
+                }
             }
         }
-    }
 
-    function restoreFinishBtn() {
-        if (view.withdrawn) {
-            finishBtn.textContent = "Вывести свой доход";
-            finishBtn.disabled = false;
-            voucherBtn.classList.remove("show");
-        } else if (view.finishValue !== null) {
-            finishBtn.textContent = "Ваша доля равна " + formatNumber(view.finishValue, 10);
-            finishBtn.disabled = true;
-            voucherBtn.textContent = "Получить ваучер на сумму " + formatNumber(view.finishValue, 10);
-            voucherBtn.classList.add("show");
-        } else {
-            finishBtn.textContent = "Вывести свой доход";
-            finishBtn.disabled = true;
-            voucherBtn.classList.remove("show");
+        function restoreFinishBtn() {
+            if (view.withdrawn) {
+                finishBtn.textContent = "Вывести свой доход";
+                finishBtn.disabled = false;
+                voucherBtn.classList.remove("show");
+            } else if (view.finishValue !== null) {
+                finishBtn.textContent = "Ваша доля равна " + formatNumber(view.finishValue, 10);
+                finishBtn.disabled = true;
+                voucherBtn.textContent = "Получить ваучер на сумму " + formatNumber(view.finishValue, 10);
+                voucherBtn.classList.add("show");
+            } else {
+                finishBtn.textContent = "Вывести свой доход";
+                finishBtn.disabled = true;
+                voucherBtn.classList.remove("show");
+            }
         }
-    }
 
-    setInterval(refreshWithdrawBtn, 1000);
+        setInterval(refreshWithdrawBtn, 1000);
 
-    // ============================================================
-    // ОБРАБОТЧИКИ КНОПОК
-    // ============================================================
-    btn.addEventListener("click", async () => {
-        if (btn.disabled) return;
-        trackEvent("click1");
-        btn.disabled = true;
-        const res = await apiAction("activate");
-        if (!res || res.error) refreshWithdrawBtn();
-    });
+        // ============================================================
+        // ОБРАБОТЧИКИ КНОПОК
+        // ============================================================
+        btn.addEventListener("click", async () => {
+            if (btn.disabled) return;
+            trackEvent("click1");
+            btn.disabled = true;
+            const res = await apiAction("activate");
+            if (!res || res.error) refreshWithdrawBtn();
+        });
 
-    finishBtn.addEventListener("click", () => {
-        if (finishBtn.disabled) return;
-        if (view.counter3CurrentValue < MIN_WITHDRAW_AMOUNT) {
-            const thresholdStr = MIN_WITHDRAW_AMOUNT.toLocaleString("ru-RU", { maximumFractionDigits: 10 });
-            alert("Ваш счет пока пополняется. Как только он превысит " + thresholdStr + ", то Вы сможете снять сумму.");
-            return;
+        // Вспомогательная функция для показа красивого окна порога
+        function showMinWithdrawNotice(thresholdValue) {
+            const thresholdStr = thresholdValue.toLocaleString("ru-RU", { maximumFractionDigits: 10 });
+            document.getElementById("minWithdrawText").textContent = 
+                "Ваш счет пока пополняется. Как только он превысит " + thresholdStr + ", то Вы сможете снять сумму.";
+                
+            document.getElementById("minWithdrawModal").classList.add("show");
+            document.body.classList.add("modal-open");
         }
-        modal.classList.add("show");
-        document.body.classList.add("modal-open");
-        modalNo.focus();
-    });
 
-    function closeConfirmModal() {
-        modal.classList.remove("show");
-        document.body.classList.remove("modal-open");
-    }
+        document.getElementById("closeMinWithdrawBtn").addEventListener("click", () => {
+            document.getElementById("minWithdrawModal").classList.remove("show");
+            document.body.classList.remove("modal-open");
+        });
 
-    modalNo.addEventListener("click", closeConfirmModal);
-    modal.addEventListener("click", (e) => { if (e.target === modal) closeConfirmModal(); });
-    
-    let finishInProgress = false;
-    modalYes.addEventListener("click", async () => {
-        closeConfirmModal();
-        if (finishInProgress) return;
-        finishInProgress = true;
-        try {
-            const res = await apiAction("finish");
-            if (!res || res.error) {
-                if (res?.error === "min_withdraw") {
-                    const thr = res.minAmount.toLocaleString("ru-RU", { maximumFractionDigits: 10 });
-                    alert("Ваш счет пока пополняется. Как только он превысит " + thr + ", то Вы сможете снять сумму.");
-                } else if (res?.error === "cooldown") {
-                    refreshWithdrawBtn();
-                } else {
-                    alert("Ошибка соединения. Попробуйте ещё раз.");
-                }
+        finishBtn.addEventListener("click", () => {
+            if (finishBtn.disabled) return;
+            
+            // Если сумма меньше порога — показываем НАШЕ синее окно
+            if (view.counter3CurrentValue < MIN_WITHDRAW_AMOUNT) {
+                showMinWithdrawNotice(MIN_WITHDRAW_AMOUNT);
                 return;
             }
-            flashTotalReceived();
-            trackEvent("finish", String(res.finishValue));
-        } finally {
-            finishInProgress = false;
+            modal.classList.add("show");
+            document.body.classList.add("modal-open");
+            modalNo.focus();
+        });
+
+        function closeConfirmModal() {
+            modal.classList.remove("show");
+            document.body.classList.remove("modal-open");
         }
-    });
 
-    voucherBtn.addEventListener("click", async () => {
-        trackEvent("voucher", String(view.finishValue));
-        const res = await apiAction("claim-voucher");
-        if (!res || res.error) {
-            alert("Не удалось подтвердить ваучер. Попробуйте ещё раз.");
-            return;
-        }
-        document.getElementById("modalVoucherAmount").textContent = formatNumber(res.claimedValue || 0, 10);
-        document.getElementById("voucherSuccessModal").classList.add("show");
-        document.body.classList.add("modal-open");
-    });
-
-    document.getElementById("closeVoucherBtn").addEventListener("click", () => {
-        document.getElementById("voucherSuccessModal").classList.remove("show");
-        document.body.classList.remove("modal-open");
-    });
-    document.getElementById("goToChannelBtn").addEventListener("click", () => {
-        if (window.Telegram?.WebApp) window.Telegram.WebApp.openTelegramLink("https://t.me/ubirus");
-        else window.open("https://t.me/ubirus", "_blank");
-        document.getElementById("voucherSuccessModal").classList.remove("show");
-        document.body.classList.remove("modal-open");
-    });
-
-    // ============================================================
-    // НОВОСТИ И ИНИЦИАЛИЗАЦИЯ
-    // ============================================================
-    const news = [
-        { date: "22.10.2026", text: "⚡️Добавлено поле Сумма полученного дохода. Это все Ваши выводы дохода за всё время.", isNew: true },
-        { date: "21.10.2026", text: '⚡️Запуск канала. <a href="https://t.me/ubirus" target="_blank" class="news-link">https://t.me/ubirus</a>'},
-        { date: "13.10.2026", text: "⚡️Запуск проекта. Владимир Владимирович, пожелавший остаться неизвестным, передал Проекту свои 1000🪙 и обещал рост🌱" }
-    ];
-    function renderNews() {
-        const list = document.getElementById("newsList");
-        list.innerHTML = "";
-        for (const item of news) {
-            const li = document.createElement("li");
-            li.className = "news-item" + (item.isNew ? " new" : "");
-            li.innerHTML = `<span class="news-date">${item.date}</span><span class="news-text">${item.text}</span>`;
-            list.appendChild(li);
-        }
-    }
-    renderNews();
-
-    const aboutText = [
-        { type: "p", html: '<strong>Цель проекта</strong>' },
-        { type: "ul", items: ["💡 Обеспечение каждого Безусловным Базовым Доходом.", "💡 Создание благополучного и счастливого Будущего."] },
-        { type: "hr" },
-        { type: "p", html: '<strong>Правила:</strong>' },
-        { type: "ul", items: ["Ваша доля Базового Дохода начисляется автоматически после активации личного счёта.", "Вы можете вывести свою долю.", "Один человек - одна доля Богатства."] }
-    ];
-    function renderAbout() {
-        const box = document.getElementById("aboutContent");
-        box.innerHTML = "";
-        for (const block of aboutText) {
-            if (block.type === "p") { const p = document.createElement("p"); p.innerHTML = block.html; box.appendChild(p); }
-            else if (block.type === "ul") {
-                const ul = document.createElement("ul");
-                for (const item of block.items) { const li = document.createElement("li"); li.textContent = item; ul.appendChild(li); }
-                box.appendChild(ul);
-            } else if (block.type === "hr") box.appendChild(document.createElement("hr"));
-        }
-    }
-    renderAbout();
-
-    (async function init() {
-        trackEvent("open");
-        const res = await apiPost("/api/progress/get");
-        if (res && !res.error) applyServerState(res);
+        modalNo.addEventListener("click", closeConfirmModal);
+        modal.addEventListener("click", (e) => { if (e.target === modal) closeConfirmModal(); });
         
-        // Опрашиваем сервер раз в 30 секунд
-        setInterval(async () => {
-            const r = await apiPost("/api/progress/get");
-            if (r && !r.error) applyServerState(r);
-        }, 30000);
-    })();
-</script>
+        let finishInProgress = false;
+        modalYes.addEventListener("click", async () => {
+            closeConfirmModal();
+            if (finishInProgress) return;
+            finishInProgress = true;
+            try {
+                const res = await apiAction("finish");
+                if (!res || res.error) {
+                    if (res?.error === "min_withdraw") {
+                        // Сервер тоже может сказать "мало денег" - показываем наше окно
+                        showMinWithdrawNotice(res.minAmount);
+                    } else if (res?.error === "cooldown") {
+                        refreshWithdrawBtn();
+                    } else {
+                        alert("Ошибка соединения. Попробуйте ещё раз.");
+                    }
+                    return;
+                }
+                flashTotalReceived();
+                trackEvent("finish", String(res.finishValue));
+            } finally {
+                finishInProgress = false;
+            }
+        });
+
+        voucherBtn.addEventListener("click", async () => {
+            trackEvent("voucher", String(view.finishValue));
+            const res = await apiAction("claim-voucher");
+            if (!res || res.error) {
+                alert("Не удалось подтвердить ваучер. Попробуйте ещё раз.");
+                return;
+            }
+            document.getElementById("modalVoucherAmount").textContent = formatNumber(res.claimedValue || 0, 10);
+            document.getElementById("voucherSuccessModal").classList.add("show");
+            document.body.classList.add("modal-open");
+        });
+
+        document.getElementById("closeVoucherBtn").addEventListener("click", () => {
+            document.getElementById("voucherSuccessModal").classList.remove("show");
+            document.body.classList.remove("modal-open");
+        });
+        document.getElementById("goToChannelBtn").addEventListener("click", () => {
+            if (window.Telegram?.WebApp) window.Telegram.WebApp.openTelegramLink("https://t.me/ubirus");
+            else window.open("https://t.me/ubirus", "_blank");
+            document.getElementById("voucherSuccessModal").classList.remove("show");
+            document.body.classList.remove("modal-open");
+        });
+
+        // ============================================================
+        // НОВОСТИ И ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
+        const news = [
+            { date: "22.10.2026", text: "⚡️Добавлено поле Сумма полученного дохода. Это все Ваши выводы дохода за всё время.", isNew: true },
+            { date: "21.10.2026", text: '⚡️Запуск канала. <a href="https://t.me/ubirus" target="_blank" class="news-link">https://t.me/ubirus</a>'},
+            { date: "20.10.2026", text: "⚡️Запуск чата."},
+            { date: "13.10.2026", text: "⚡️Запуск проекта. Владимир Владимирович, пожелавший остаться неизвестным, передал Проекту свои 1000🪙 и обещал рост🌱" }
+        ];
+        function renderNews() {
+            const list = document.getElementById("newsList");
+            list.innerHTML = "";
+            for (const item of news) {
+                const li = document.createElement("li");
+                li.className = "news-item" + (item.isNew ? " new" : "");
+                li.innerHTML = `<span class="news-date">${item.date}</span><span class="news-text">${item.text}</span>`;
+                list.appendChild(li);
+            }
+        }
+        renderNews();
+
+        const aboutText = [
+            { type: "p", html: '<strong>Цель проекта</strong>' },
+            { type: "ul", items: ["💡 Обеспечение каждого Безусловным Базовым Доходом.", "💡 Создание благополучного и счастливого Будущего."] },
+            { type: "hr" },
+            { type: "p", html: '<strong>Правила:</strong>' },
+            { type: "ul", items: ["Ваша доля Базового Дохода начисляется автоматически после активации личного счёта.", "Вы можете вывести свою долю.", "Один человек - одна доля Богатства."] },
+            { type: "hr" },
+            { type: "p", html: '<strong>Условия:</strong>' },
+            { type: "ul", items: ["Безусловный Базовый Доход выплачивается всем, а не только нуждающимся.", "Это постоянная выплата, а не разовая акция.", "Не требуется проверки доходов или обязанности поиска работы."] },
+            { type: "hr" },
+            { type: "p", html: '<strong>Важно:</strong> Каждый имеет право быть счастливым! Мы помогаем Вам хотя бы немного не переживать за будущее.' }
+        ];
+        function renderAbout() {
+            const box = document.getElementById("aboutContent");
+            box.innerHTML = "";
+            for (const block of aboutText) {
+                if (block.type === "p") { const p = document.createElement("p"); p.innerHTML = block.html; box.appendChild(p); }
+                else if (block.type === "ul") {
+                    const ul = document.createElement("ul");
+                    for (const item of block.items) { const li = document.createElement("li"); li.textContent = item; ul.appendChild(li); }
+                    box.appendChild(ul);
+                } else if (block.type === "hr") box.appendChild(document.createElement("hr"));
+            }
+        }
+        renderAbout();
+
+        (async function init() {
+            trackEvent("open");
+            const res = await apiPost("/api/progress/get");
+            if (res && !res.error) applyServerState(res);
+            
+            // Опрашиваем сервер раз в 30 секунд
+            setInterval(async () => {
+                const r = await apiPost("/api/progress/get");
+                if (r && !r.error) applyServerState(r);
+            }, 30000);
+        })();
+    </script>
 </body>
 </html>
