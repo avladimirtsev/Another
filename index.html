@@ -919,6 +919,27 @@
             refreshWithdrawBtn();
             restoreFinishBtn();
         })();
+            // ============================================================
+    // ВРЕМЕННАЯ ПРОВЕРКА ЭТАПА 3 (БЕЗОПАСНОСТЬ)
+    // ============================================================
+    (async function testSecurity() {
+        try {
+            const res = await fetch("https://ubiru-backend.a-vladimirtsev.workers.dev/api/whoami", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ initData: tg.initData })
+            });
+            const data = await res.json();
+            
+            if (data.ok) {
+                alert("✅ Проверка пройдена!\n\nСервер подтвердил, что вы реальный пользователь.\nВаше имя: " + data.name);
+            } else {
+                alert("❌ Ошибка проверки!\n\nСервер ответил: " + JSON.stringify(data));
+            }
+        } catch (e) {
+            alert("❌ Ошибка сети: " + e.message);
+        }
+    })();
     </script>
 </body>
 </html>
