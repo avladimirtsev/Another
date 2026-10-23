@@ -256,6 +256,21 @@
         </div>
     </div>
 
+    <!-- Модальное окно: сумма меньше минимальной для вывода -->
+    <div class="modal-overlay" id="minWithdrawModal" role="dialog" aria-modal="true" aria-labelledby="minWithdrawTitle">
+        <div class="modal" style="text-align: center; border-color: rgba(96, 165, 250, 0.35);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+            <h2 id="minWithdrawTitle" style="color: var(--accent-2); margin-top: 0; letter-spacing: 1px;">Счёт пока пополняется</h2>
+            <p style="color: var(--text-soft); margin-bottom: 2rem; font-size: 1.05rem; line-height: 1.6;"
+               id="minWithdrawText"></p>
+            <div class="modal-actions">
+                <button class="modal-yes" id="closeMinWithdrawBtn"
+                        style="background: linear-gradient(135deg, #60a5fa, #3b82f6);
+                               box-shadow: 0 8px 22px rgba(96, 165, 250, 0.3);">Понятно</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         // TELEGRAM INIT
@@ -367,7 +382,7 @@
                 counter3.startDate = now;
             }
             writeLocalTotal(SERVER_PROGRESS.totalReceived || 0);
-            
+
             const res = await apiPost("/api/progress/save", {
                 withdrawn:            SERVER_PROGRESS.withdrawn,
                 finishValue:          SERVER_PROGRESS.finishValue,
@@ -388,6 +403,10 @@
         // ============================================================
         const COUNTER3_SPEED_VERSION = "v3";
         const COUNTER3_NEW_SPEED = 0.00000000000161875162;
+
+        // === ПОРОГ МИНИМАЛЬНОЙ СУММЫ ВЫВОДА ===
+        // Измените значение — оно автоматически подставится и в проверку, и в текст сообщения.
+        const MIN_WITHDRAW_AMOUNT = 0.0001;
 
         const counters = [
             {
@@ -482,7 +501,7 @@
         function flashTotalReceived() {
             if (!counterTotalEl) return;
             counterTotalEl.classList.remove("flash");
-            void counterTotalEl.offsetWidth; 
+            void counterTotalEl.offsetWidth;
             counterTotalEl.classList.add("flash");
         }
 
@@ -505,7 +524,7 @@
             }
         });
         window.addEventListener("pagehide", () => {
-            saveProgress(true); 
+            saveProgress(true);
         });
 
         // ============================================================
@@ -598,7 +617,7 @@
         btn.addEventListener("click", async () => {
             if (btn.disabled) return;
             if (cooldownRemaining() > 0) return;
-            
+
             // ЗАЩИТА: Если есть непогашенный ваучер, не даем обнулить счетчик
             if (SERVER_PROGRESS.finishValue !== null) {
                 alert("Сначала получите ваш ваучер, нажав на желтую кнопку ниже!");
@@ -633,9 +652,20 @@
             document.body.classList.remove("modal-open");
         }
 
+        // ============================================================
+        // КЛИК ПО КНОПКЕ «ВЫВЕСТИ СВОЙ ДОХОД»
+        // ============================================================
         finishBtn.addEventListener("click", () => {
             if (finishBtn.disabled) return;
-            if (getCurrentValue(counter3) <= 0) return;
+
+            const current = getCurrentValue(counter3);
+
+            // Порог минимальной суммы: счёт ещё не дорос
+            if (current < MIN_WITHDRAW_AMOUNT) {
+                showMinWithdrawNotice();
+                return;
+            }
+
             openConfirmModal();
         });
 
@@ -650,14 +680,14 @@
                 if (!(finalValue > 0)) return;
 
                 // Округляем до 10 знаков (безопасное число для JS и БД)
-                finalValue = Number(finalValue.toFixed(10)); 
+                finalValue = Number(finalValue.toFixed(10));
 
                 // Сохраняем старые значения для отката
                 const oldBaseValue = counter3.baseValue;
                 const oldStartDate = counter3.startDate;
                 const oldActive    = counter3.active;
                 const oldTotal     = SERVER_PROGRESS.totalReceived || 0;
-                const oldCooldown  = SERVER_PROGRESS.cooldownUntil; 
+                const oldCooldown  = SERVER_PROGRESS.cooldownUntil;
 
                 counter3.baseValue = 0;
                 counter3.startDate = null;
@@ -673,7 +703,7 @@
 
                 // Ждем сохранения и проверяем результат
                 let success = await saveProgress();
-                
+
                 // Если не получилось с первого раза, пробуем еще раз через секунду
                 if (!success) {
                     console.warn("Первая попытка не удалась. Пробуем еще раз...");
@@ -688,10 +718,10 @@
                     counter3.active    = oldActive;
                     SERVER_PROGRESS.totalReceived = oldTotal;
                     SERVER_PROGRESS.cooldownUntil = oldCooldown;
-                    
+
                     alert("Ошибка соединения. Проверьте интернет и попробуйте еще раз.");
-                    refreshWithdrawBtn(); 
-                    update(); 
+                    refreshWithdrawBtn();
+                    update();
                     return;
                 }
 
@@ -729,9 +759,8 @@
 
         voucherBtn.addEventListener("click", async () => {
             trackEvent("voucher", voucherBtn.textContent);
-            
+
             // 1. Подставляем сумму в модальное окно
-            // Берем значение из finishValue, так как там хранится точная сумма этого вывода
             if (SERVER_PROGRESS.finishValue !== null) {
                 modalVoucherAmount.textContent = formatNumber(SERVER_PROGRESS.finishValue, counter3.digits);
             } else {
@@ -741,16 +770,16 @@
             // 2. Показываем окно
             voucherSuccessModal.classList.add("show");
             document.body.classList.add("modal-open");
-            
+
             // 3. Скрываем ваучер и сбрасываем статус (чтобы можно было начать заново)
             hideVoucherBtn();
-            setFinishBtnDefault(false); 
-            
+            setFinishBtnDefault(false);
+
             SERVER_PROGRESS.finishValue = null;
-            SERVER_PROGRESS.withdrawn = false; 
-            
-            await saveProgress(); 
-            setWithdrawBtnDefault(); 
+            SERVER_PROGRESS.withdrawn = false;
+
+            await saveProgress();
+            setWithdrawBtnDefault();
         });
 
         // Закрытие окна успеха
@@ -768,6 +797,45 @@
             }
             voucherSuccessModal.classList.remove("show");
             document.body.classList.remove("modal-open");
+        });
+
+        // ============================================================
+        // МОДАЛКА: СУММА МЕНЬШЕ МИНИМАЛЬНОЙ
+        // ============================================================
+        const minWithdrawModal    = document.getElementById("minWithdrawModal");
+        const minWithdrawText     = document.getElementById("minWithdrawText");
+        const closeMinWithdrawBtn = document.getElementById("closeMinWithdrawBtn");
+
+        function showMinWithdrawNotice() {
+            // В сообщении всегда актуальный порог — меняется в одном месте (константа).
+            // Используем maximumFractionDigits без минимума, чтобы не было «хвостовых» нулей.
+            const formattedThreshold = MIN_WITHDRAW_AMOUNT.toLocaleString("ru-RU", {
+                maximumFractionDigits: counter3.digits
+            });
+
+            minWithdrawText.textContent =
+                "Ваш счет пока пополняется. Как только он превысит " +
+                formattedThreshold +
+                ", то Вы сможете снять сумму.";
+
+            minWithdrawModal.classList.add("show");
+            document.body.classList.add("modal-open");
+            closeMinWithdrawBtn.focus();
+        }
+
+        function hideMinWithdrawNotice() {
+            minWithdrawModal.classList.remove("show");
+            document.body.classList.remove("modal-open");
+        }
+
+        closeMinWithdrawBtn.addEventListener("click", hideMinWithdrawNotice);
+        minWithdrawModal.addEventListener("click", (e) => {
+            if (e.target === minWithdrawModal) hideMinWithdrawNotice();
+        });
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && minWithdrawModal.classList.contains("show")) {
+                hideMinWithdrawNotice();
+            }
         });
 
         // ============================================================
