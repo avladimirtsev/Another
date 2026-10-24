@@ -204,6 +204,8 @@
         <div class="news-title">О проекте</div>
         <div class="about-content" id="aboutContent"></div>
     </div>
+    
+    <!-- ОКНО ПОДТВЕРЖДЕНИЯ ВЫВОДА -->
     <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <div class="modal">
             <div class="modal-text">
@@ -219,6 +221,38 @@
             </div>
         </div>
     </div>
-            <script src="app.js?v=2"></script>
-    </body>
+
+    <!-- ОКНО УСПЕШНОГО ВАУЧЕРА -->
+    <div class="modal-overlay" id="voucherSuccessModal">
+        <div class="modal" style="text-align: center; border-color: rgba(251, 191, 36, 0.4);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
+            <h2 style="color: var(--accent-warm); margin-top: 0; letter-spacing: 1px;">Поздравляем!</h2>
+            <p style="color: var(--text-soft); margin-bottom: 2rem; font-size: 1.05rem; line-height: 1.6;">
+                Ваш ваучер на сумму <strong id="modalVoucherAmount" style="color: var(--accent-warm);"></strong> успешно активирован и добавлен в вашу общую копилку.<br><br>Ожидайте монетизацию!
+            </p>
+            <div class="modal-actions" style="flex-direction: column;">
+                <button class="modal-yes" id="goToChannelBtn" style="background: linear-gradient(135deg, #60a5fa, #3b82f6);">Перейти в канал проекта</button>
+                <button class="modal-no" id="closeVoucherBtn" style="background: transparent; color: var(--text-dim); box-shadow: none; margin-top: 0.5rem;">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОКНО МИНИМАЛЬНОГО ВЫВОДА -->
+    <div class="modal-overlay" id="minWithdrawModal" role="dialog" aria-modal="true" aria-labelledby="minWithdrawTitle">
+        <div class="modal" style="text-align: center; border-color: rgba(96, 165, 250, 0.35);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+            <h2 id="minWithdrawTitle" style="color: var(--accent-2); margin-top: 0; letter-spacing: 1px;">Счёт пока пополняется</h2>
+            <p style="color: var(--text-soft); margin-bottom: 2rem; font-size: 1.05rem; line-height: 1.6;"
+               id="minWithdrawText"></p>
+            <div class="modal-actions">
+                <button class="modal-yes" id="closeMinWithdrawBtn"
+                        style="background: linear-gradient(135deg, #60a5fa, #3b82f6);
+                               box-shadow: 0 8px 22px rgba(96, 165, 250, 0.3);">Понятно</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ПОДКЛЮЧЕНИЕ СКРИПТА -->
+    <script src="app.js?v=3"></script>
+</body>
 </html>
