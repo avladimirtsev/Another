@@ -63,15 +63,13 @@ let SERVER_PROGRESS = {
     finishValue: null,
     cooldownUntil: 0,
     counter3SpeedVersion: "",
-    totalReceived: 0        // === НОВОЕ ПОЛЕ ===
+    totalReceived: 0
 };
 
 async function loadProgress() {
     const data = await apiPost("/api/progress/get");
     if (!data) return;
 
-    // totalReceived: сервер — источник истины, localStorage — резерв.
-    // Берём максимум, т.к. величина монотонно растёт и не может уменьшаться.
     const serverTotal = (typeof data.totalReceived === "number" && data.totalReceived >= 0)
         ? data.totalReceived
         : 0;
@@ -85,11 +83,12 @@ async function loadProgress() {
         totalReceived:        Math.max(serverTotal, localTotal)
     };
 
-    if (data.counter3Start !== null && typeof data.counter3Start === "number") {
-        counter3.baseValue = Number(data.counter3Base) || 0;
-        counter3.startDate = data.counter3Start;
-        counter3.active    = !!data.counter3Active;
-        counter3.perSecond = Number(data.counter3PerSecond) || COUNTER3_NEW_SPEED;
+    // ИСПРАВЛЕНИЕ: берем текущее значение с сервера и запускаем тиканье
+    if (data.counter3Active) {
+        counter3.baseValue = Number(data.counter3CurrentValue) || 0;
+        counter3.startDate = Date.now();
+        counter3.active    = true;
+        counter3.perSecond = COUNTER3_NEW_SPEED;
     } else {
         counter3.baseValue = 0;
         counter3.startDate = null;
@@ -117,7 +116,7 @@ async function saveProgress(keepalive = false) {
         counter3Active:       counter3.active,
         counter3PerSecond:    counter3.perSecond,
         counter3SpeedVersion: COUNTER3_SPEED_VERSION,
-        totalReceived:        SERVER_PROGRESS.totalReceived || 0   // === НОВОЕ ПОЛЕ ===
+        totalReceived:        SERVER_PROGRESS.totalReceived || 0
     }, { keepalive });
 }
 
@@ -147,7 +146,7 @@ const counters = [
         baseValue: 0,
         startDate: null,
         perSecond: COUNTER3_NEW_SPEED,
-        digits: 13, active: false, id: "counter3"
+        digits: 10, active: false, id: "counter3" // ИСПРАВЛЕНИЕ: цифр после запятой теперь 10
     }
 ];
 
@@ -221,7 +220,7 @@ function renderTotalReceived() {
 function flashTotalReceived() {
     if (!counterTotalEl) return;
     counterTotalEl.classList.remove("flash");
-    void counterTotalEl.offsetWidth; // принудительный reflow, чтобы анимация перезапустилась
+    void counterTotalEl.offsetWidth; 
     counterTotalEl.classList.add("flash");
 }
 
@@ -390,7 +389,6 @@ async function performFinish() {
         SERVER_PROGRESS.finishValue   = finalValue;
         SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
 
-        // === ГЛАВНОЕ: накапливаем сумму полученного дохода ===
         SERVER_PROGRESS.totalReceived =
             (SERVER_PROGRESS.totalReceived || 0) + finalValue;
 
@@ -428,19 +426,19 @@ voucherBtn.addEventListener("click", () => {
 // ============================================================
 // НОВОСТИ И О ПРОЕКТЕ
 // ============================================================
-        const news = [
-            { date: "23.10.2026", text: "⚡️Теперь можно подключать WALT для вывода своего Дохода.", isNew: true },
-            { date: "22.10.2026", text: "⚡️Добавлено поле Сумма полученного дохода. Это все Ваши выводы дохода за всё время."},
-            { date: "21.10.2026", text: "⚡️Запуск канала. https://t.me/ubirus"},
-            { date: "20.10.2026", text: "⚡️Запуск чата."},
-            { date: "19.10.2026", text: "⚡️Подключение сервера. Сохранение вашего прогресса с любых устройств."},
-            { date: "18.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 2%⚡️."},
-            { date: "17.10.2026", text: "⚡️ Запуск Telegram Mini App @ubiru_bot"},
-            { date: "16.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 4%⚡️."},
-            { date: "15.10.2026", text: "Подключение личного счета."},
-            { date: "14.10.2026", text: "Подключение новой страны - Россия🇷🇺." },
-            { date: "13.10.2026", text: "⚡️Запуск проекта. Владимир Владимирович передал Проекту свои 1000🪙 и пожелал роста🌱" }
-        ];
+const news = [
+    { date: "23.10.2026", text: "⚡️Теперь можно подключать WALT для вывода своего Дохода.", isNew: true },
+    { date: "22.10.2026", text: "⚡️Добавлено поле Сумма полученного дохода. Это все Ваши выводы дохода за всё время."},
+    { date: "21.10.2026", text: "⚡️Запуск канала. https://t.me/ubirus"},
+    { date: "20.10.2026", text: "⚡️Запуск чата."},
+    { date: "19.10.2026", text: "⚡️Подключение сервера. Сохранение вашего прогресса с любых устройств."},
+    { date: "18.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 2%⚡️."},
+    { date: "17.10.2026", text: "⚡️ Запуск Telegram Mini App @ubiru_bot"},
+    { date: "16.10.2026", text: "💡Скорость прироста Богатства на Вашем счете увеличилась на 4%⚡️."},
+    { date: "15.10.2026", text: "Подключение личного счета."},
+    { date: "14.10.2026", text: "Подключение новой страны - Россия🇷🇺." },
+    { date: "13.10.2026", text: "⚡️Запуск проекта. Владимир Владимирович передал Проекту свои 1000🪙 и пожелал роста🌱" }
+];
 
 function renderNews() {
     const list = document.getElementById("newsList");
