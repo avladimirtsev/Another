@@ -147,7 +147,7 @@ const counters = [
         baseValue: 0,
         startDate: null,
         perSecond: COUNTER3_NEW_SPEED,
-        digits: 10, active: false, id: "counter3"
+        digits: 13, active: false, id: "counter3"
     }
 ];
 
