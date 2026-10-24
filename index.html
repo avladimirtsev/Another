@@ -31,6 +31,16 @@
             -webkit-font-smoothing: antialiased;
         }
         body.modal-open { overflow: hidden; }
+        
+        /* Стили для кнопки TON Connect */
+        #ton-connect-button {
+            width: 100%;
+            max-width: 640px;
+            display: flex;
+            justify-content: center;
+            margin-bottom: -0.5rem;
+        }
+
         .counter-box {
             display: flex; flex-direction: column; align-items: center;
             background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
@@ -185,17 +195,22 @@
         <div class="counter-label">Ваш Базовый Доход</div>
         <div class="counter white" id="counter3">0</div>
     </div>
+    
     <!-- === НОВЫЙ СЧЁТЧИК: Сумма полученного дохода === -->
     <div class="counter-box counter-box-total">
         <div class="counter-label">Сумма полученного дохода</div>
         <div class="counter warm" id="counterTotal">0</div>
     </div>
 
+    <!-- === БЛОК ДЛЯ КНОПКИ TON CONNECT === -->
+    <div id="ton-connect-button"></div>
+
     <div class="btn-row">
         <button class="withdraw-btn" id="withdrawBtn">Получить долю Богатства Страны</button>
         <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход и завершить участие</button>
     </div>
     <button class="voucher-btn" id="voucherBtn"></button>
+    
     <div class="news-box">
         <div class="news-title">Новости проекта</div>
         <ul class="news-list" id="newsList"></ul>
