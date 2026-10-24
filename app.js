@@ -132,7 +132,7 @@ const counters = [
         el: document.getElementById("counter1"),
         baseValue: 10,
         startDate: new Date("2026-10-13T00:00:00+03:00").getTime(),
-        perSecond: 0.00000231481481,
+        perSecond: 0.00000462962963,
         digits: 4, active: true, id: "counter1"
     },
     {
