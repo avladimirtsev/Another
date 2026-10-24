@@ -124,8 +124,8 @@ async function saveProgress(keepalive = false) {
 // ============================================================
 // НАСТРОЙКИ СЧЁТЧИКОВ
 // ============================================================
-const COUNTER3_SPEED_VERSION = "v2";
-const COUNTER3_NEW_SPEED = 0.00000000000825563326;
+const COUNTER3_SPEED_VERSION = "v3";
+const COUNTER3_NEW_SPEED = 0.00000000000003237503;
 
 const counters = [
     {
