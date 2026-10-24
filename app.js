@@ -458,9 +458,6 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modal.classList.contains("show")) closeConfirmModal();
 });
 
-// ============================================================
-// ОБРАБОТКА КНОПКИ ВАУЧЕРА
-// ============================================================
 voucherBtn.addEventListener("click", async () => {
     if (voucherBtn.disabled) return;
     
@@ -594,4 +591,15 @@ renderAbout();
     await migrateCounter3Speed(SERVER_PROGRESS.counter3SpeedVersion);
     refreshWithdrawBtn();
     restoreFinishBtn();
+
+    // Убираем заставку, когда все данные загружены
+    const splash = document.getElementById("splash-screen");
+    if (splash) {
+        // Небольшая задержка (800мс), чтобы пользователь успел увидеть логотип
+        setTimeout(() => {
+            splash.classList.add("hidden");
+            // Через 600мс (после завершения анимации) полностью удаляем из DOM
+            setTimeout(() => splash.remove(), 600);
+        }, 800); 
+    }
 })();
