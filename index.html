@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Счётчик прироста богатства</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <style>
         :root {
             --bg:            #0e1420;
@@ -19,7 +18,6 @@
             --accent-2:      #60a5fa;
             --accent-warm:   #fbbf24;
             --danger:        #f43f5e;
-            --box-width:     340px;
         }
         * { box-sizing: border-box; }
         body {
@@ -35,12 +33,8 @@
         .counter-box {
             display: flex; flex-direction: column; align-items: center;
             background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
-            border: 1px solid var(--border);
-            padding: 1.5rem 1.25rem;
-            border-radius: 18px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-            width: 100%;
-            max-width: var(--box-width);
+            border: 1px solid var(--border); padding: 1.5rem 3rem; border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); min-width: 260px;
         }
         .counter-box-wealth { position: relative; }
         .counter-box-total {
@@ -73,12 +67,9 @@
             35%  { text-shadow: 0 0 34px rgba(251, 191, 36, 0.95); color: #fef3c7; }
             100% { text-shadow: 0 0 18px rgba(251, 191, 36, 0.35); color: var(--accent-warm); }
         }
-        .btn-row {
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem;
-            width: 100%; max-width: var(--box-width);
-        }
+        .btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; width: 100%; max-width: 640px; }
         .withdraw-btn {
-            flex: 1 1 100%; padding: 1.15rem 2rem;
+            flex: 1 1 260px; padding: 1.15rem 2rem;
             background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
             color: #fff; font-family: inherit; font-size: 1rem; font-weight: 700;
             letter-spacing: 1.5px; text-transform: uppercase; border: none; border-radius: 14px;
@@ -101,7 +92,7 @@
             color: #94a3b8; box-shadow: none; filter: none; transform: none;
         }
         .voucher-btn {
-            display: none; width: 100%; max-width: var(--box-width); padding: 1.05rem 2rem;
+            display: none; width: 100%; max-width: 640px; padding: 1.05rem 2rem;
             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
             color: #1f2937; font-family: inherit; font-size: 0.95rem; font-weight: 800;
             letter-spacing: 1.5px; text-transform: uppercase; border: none; border-radius: 14px;
@@ -114,8 +105,7 @@
         .voucher-btn:active { transform: scale(0.98); }
         @keyframes voucherIn { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .news-box {
-            width: 100%;
-            max-width: var(--box-width); max-height: 320px; overflow-y: auto;
+            min-width: 260px; max-width: 300px; max-height: 320px; overflow-y: auto; width: 100%;
             background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
             border: 1px solid var(--border); padding: 1.4rem 1.6rem; border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); text-align: left;
@@ -137,7 +127,7 @@
         }
         .news-item .news-text { color: var(--text-soft); }
         .news-item.new .news-text { color: #a7f3d0; }
-        .about-box { max-height: none; }
+        .about-box { max-width: 640px; max-height: none; }
         .about-content { color: var(--text-soft); font-size: 0.9rem; line-height: 1.6; }
         .about-content p { margin: 0 0 0.9rem; }
         .about-content p:last-child { margin-bottom: 0; }
@@ -178,18 +168,11 @@
         .modal-yes:hover { filter: brightness(1.08); }
         .modal-no { background: linear-gradient(135deg, #334155, #1e293b); color: #e2e8f0; box-shadow: 0 8px 22px rgba(51, 65, 85, 0.3); }
         .modal-no:hover { filter: brightness(1.15); }
-        .news-link { color: var(--accent-2); text-decoration: underline; text-underline-offset: 3px; transition: color 0.2s ease; }
-        .news-link:hover { color: #93c5fd; }
-        #ton-connect-button { width: 100%; max-width: var(--box-width); display: flex; justify-content: center; margin-bottom: -0.5rem; }
-        @media (max-width: 360px) {
-            .counter       { font-size: 1.8rem; }
-            .counter-label { font-size: 0.78rem; letter-spacing: 2px; }
-        }
     </style>
 </head>
 <body>
     <div class="counter-box counter-box-wealth">
-        <div class="counter-label">Богатство 🇷🇺</div>
+        <div class="counter-label">Богатство Страны</div>
         <div class="counter" id="counter1">0</div>
         <div class="daily-gain" id="dailyGain1"></div>
     </div>
@@ -201,16 +184,15 @@
         <div class="counter-label">Ваш Базовый Доход</div>
         <div class="counter white" id="counter3">0</div>
     </div>
+    <!-- === НОВЫЙ СЧЁТЧИК: Сумма полученного дохода === -->
     <div class="counter-box counter-box-total">
         <div class="counter-label">Сумма полученного дохода</div>
         <div class="counter warm" id="counterTotal">0</div>
     </div>
 
-    <div id="ton-connect-button"></div>
-
     <div class="btn-row">
         <button class="withdraw-btn" id="withdrawBtn">Получить долю Богатства Страны</button>
-        <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход</button>
+        <button class="withdraw-btn finish-btn" id="finishBtn">Вывести свой доход и завершить участие</button>
     </div>
     <button class="voucher-btn" id="voucherBtn"></button>
     <div class="news-box">
@@ -221,7 +203,6 @@
         <div class="news-title">О проекте</div>
         <div class="about-content" id="aboutContent"></div>
     </div>
-    
     <div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <div class="modal">
             <div class="modal-text">
@@ -230,7 +211,7 @@
                 права на долю собственности бывшего СССР. Вы можете продолжить
                 получать свою долю Богатства.
             </div>
-            <div class="modal-question" id="confirmTitle">Снимаю свою долю?</div>
+            <div class="modal-question" id="confirmTitle">Прекращаете получать свою долю?</div>
             <div class="modal-actions">
                 <button class="modal-yes" id="modalYes">Да</button>
                 <button class="modal-no"  id="modalNo">Нет</button>
@@ -238,371 +219,8 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="voucherSuccessModal">
-        <div class="modal" style="text-align: center; border-color: rgba(251, 191, 36, 0.4);">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
-            <h2 style="color: var(--accent-warm); margin-top: 0; letter-spacing: 1px;">Поздравляем!</h2>
-            <p style="color: var(--text-soft); margin-bottom: 2rem; font-size: 1.05rem; line-height: 1.6;">
-                Ваш ваучер на сумму <strong id="modalVoucherAmount" style="color: var(--accent-warm);"></strong> успешно активирован и добавлен в вашу общую копилку.<br><br>Ожидайте монетизацию!
-            </p>
-            <div class="modal-actions" style="flex-direction: column;">
-                <button class="modal-yes" id="goToChannelBtn" style="background: linear-gradient(135deg, #60a5fa, #3b82f6);">Перейти в канал проекта</button>
-                <button class="modal-no" id="closeVoucherBtn" style="background: transparent; color: var(--text-dim); box-shadow: none; margin-top: 0.5rem;">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="minWithdrawModal" role="dialog" aria-modal="true" aria-labelledby="minWithdrawTitle">
-        <div class="modal" style="text-align: center; border-color: rgba(96, 165, 250, 0.35);">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
-            <h2 id="minWithdrawTitle" style="color: var(--accent-2); margin-top: 0; letter-spacing: 1px;">Счёт пока пополняется</h2>
-            <p style="color: var(--text-soft); margin-bottom: 2rem; font-size: 1.05rem; line-height: 1.6;"
-               id="minWithdrawText"></p>
-            <div class="modal-actions">
-                <button class="modal-yes" id="closeMinWithdrawBtn"
-                        style="background: linear-gradient(135deg, #60a5fa, #3b82f6);
-                               box-shadow: 0 8px 22px rgba(96, 165, 250, 0.3);">Понятно</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        const tg = window.Telegram?.WebApp;
-        let telegramUser = null;
-        let initData = "";
-
-        if (tg) {
-            tg.ready();
-            tg.expand();
-            telegramUser = tg.initDataUnsafe?.user || null;
-            initData = tg.initData || "";
-        }
-
-        let tonConnectUI = null;
-        try {
-            tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-                manifestUrl: 'https://ubiru-backend.a-vladimirtsev.workers.dev/tonconnect-manifest.json',
-                buttonRootId: 'ton-connect-button'
-            });
-
-            tonConnectUI.onStatusChange(wallet => {
-                if (wallet) {
-                    console.log("✅ Кошелёк подключен!", wallet.account.address);
-                } else {
-                    console.log("❌ Кошелёк отключен.");
-                }
-            });
-        } catch (e) {
-            console.error("Ошибка инициализации TON Connect:", e);
-        }
-
-        const API_BASE = "https://ubiru-backend.a-vladimirtsev.workers.dev";
-        
-        let view = {
-            withdrawn: false,
-            finishValue: null,
-            cooldownUntil: 0,
-            counter3Active: false,
-            counter3CurrentValue: 0,
-            totalReceived: 0
-        };
-        
-        let lastServerValue = 0;
-        let lastServerAt = Date.now();
-        const COUNTER3_NEW_SPEED = 0.00000000000161875162;
-        const MIN_WITHDRAW_AMOUNT = 0.00000001;
-
-        async function apiPost(path, payload = {}) {
-            try {
-                const res = await fetch(API_BASE + path, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...payload, initData })
-                });
-                if (!res.ok && res.status !== 400 && res.status !== 429) throw new Error("HTTP " + res.status);
-                return await res.json();
-            } catch (e) {
-                console.warn("API error:", path, e);
-                return null;
-            }
-        }
-
-        function trackEvent(event, extra = "") {
-            apiPost("/api/track", { event, extra });
-        }
-
-        async function apiAction(action, extraPayload = {}) {
-            const res = await apiPost("/api/progress/" + action, extraPayload);
-            if (res && !res.error) applyServerState(res);
-            return res;
-        }
-
-        function applyServerState(s) {
-            view.withdrawn            = !!s.withdrawn;
-            view.finishValue          = (typeof s.finishValue === "number") ? s.finishValue : null;
-            view.cooldownUntil        = s.cooldownUntil || 0;
-            view.counter3Active       = !!s.counter3Active;
-            view.counter3CurrentValue = s.counter3CurrentValue || 0;
-            view.totalReceived        = s.totalReceived || 0;
-
-            lastServerValue = view.counter3CurrentValue;
-            lastServerAt = Date.now();
-
-            renderTotalReceived();
-            restoreFinishBtn();
-            refreshWithdrawBtn();
-        }
-
-        function formatNumber(value, digits) {
-            return value.toLocaleString("ru-RU", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-        }
-
-        function update() {
-            const c1 = document.getElementById("counter1");
-            if (c1) {
-                const start1 = new Date("2026-10-13T00:00:00+03:00").getTime();
-                const sec1 = (Date.now() - start1) / 1000;
-                c1.textContent = formatNumber(1000 + 0.000231481481481 * sec1, 4);
-            }
-
-            const c2 = document.getElementById("counter2");
-            if (c2) {
-                const start2 = new Date("2026-10-14T00:00:00+03:00").getTime();
-                const sec2 = (Date.now() - start2) / 1000;
-                c2.textContent = formatNumber(143000000 - 0.011 * sec2, 0);
-            }
-
-            const c3 = document.getElementById("counter3");
-            if (c3) {
-                let display = view.counter3CurrentValue;
-                if (view.counter3Active) {
-                    const elapsed = (Date.now() - lastServerAt) / 1000;
-                    display = lastServerValue + COUNTER3_NEW_SPEED * elapsed;
-                }
-                c3.textContent = formatNumber(display, 10);
-            }
-
-            const daily = document.getElementById("dailyGain1");
-            if (daily) {
-                const gain = 0.000231481481481 * 86400;
-                daily.textContent = "+" + formatNumber(gain, 4) + " за сутки";
-            }
-        }
-
-        const counterTotalEl = document.getElementById("counterTotal");
-        function renderTotalReceived() {
-            if (counterTotalEl) counterTotalEl.textContent = formatNumber(view.totalReceived, 10);
-        }
-        function flashTotalReceived() {
-            if (!counterTotalEl) return;
-            counterTotalEl.classList.remove("flash");
-            void counterTotalEl.offsetWidth; 
-            counterTotalEl.classList.add("flash");
-        }
-
-        setInterval(update, 250);
-        update();
-
-        const btn = document.getElementById("withdrawBtn");
-        const finishBtn = document.getElementById("finishBtn");
-        const voucherBtn = document.getElementById("voucherBtn");
-        const modal = document.getElementById("confirmModal");
-        const modalYes = document.getElementById("modalYes");
-        const modalNo = document.getElementById("modalNo");
-
-        function cooldownRemaining() { return (view.cooldownUntil || 0) - Date.now(); }
-
-        function refreshWithdrawBtn() {
-            const left = cooldownRemaining();
-            if (left > 0) {
-                const totalSec = Math.max(0, Math.ceil(left / 1000));
-                const m = Math.floor(totalSec / 60);
-                const s = totalSec % 60;
-                btn.textContent = "Доступно через " + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-                btn.disabled = true;
-            } else {
-                if (view.finishValue !== null) {
-                    btn.textContent = "Сначала заберите ваучер!";
-                    btn.disabled = true;
-                } else if (view.withdrawn) {
-                    btn.textContent = "Вам уже поступает доля Богатства 🇷🇺!";
-                    btn.disabled = true;
-                } else {
-                    btn.textContent = "Получить долю Богатства Страны";
-                    btn.disabled = false;
-                }
-            }
-        }
-
-        function restoreFinishBtn() {
-            if (view.withdrawn) {
-                finishBtn.textContent = "Вывести свой доход";
-                finishBtn.disabled = false;
-                voucherBtn.classList.remove("show");
-            } else if (view.finishValue !== null) {
-                finishBtn.textContent = "Ваша доля равна " + formatNumber(view.finishValue, 10);
-                finishBtn.disabled = true;
-                voucherBtn.textContent = "Получить ваучер на сумму " + formatNumber(view.finishValue, 10);
-                voucherBtn.classList.add("show");
-            } else {
-                finishBtn.textContent = "Вывести свой доход";
-                finishBtn.disabled = true;
-                voucherBtn.classList.remove("show");
-            }
-        }
-
-        setInterval(refreshWithdrawBtn, 1000);
-
-        btn.addEventListener("click", async () => {
-            if (btn.disabled) return;
-            trackEvent("click1");
-            btn.disabled = true;
-            const res = await apiAction("activate");
-            if (!res || res.error) refreshWithdrawBtn();
-        });
-
-        function showMinWithdrawNotice(thresholdValue) {
-            const thresholdStr = thresholdValue.toLocaleString("ru-RU", { maximumFractionDigits: 10 });
-            document.getElementById("minWithdrawText").textContent = 
-                "Ваш счет пока пополняется. Как только он превысит " + thresholdStr + ", то Вы сможете снять сумму.";
-                
-            document.getElementById("minWithdrawModal").classList.add("show");
-            document.body.classList.add("modal-open");
-        }
-
-        document.getElementById("closeMinWithdrawBtn").addEventListener("click", () => {
-            document.getElementById("minWithdrawModal").classList.remove("show");
-            document.body.classList.remove("modal-open");
-        });
-
-        finishBtn.addEventListener("click", () => {
-            if (finishBtn.disabled) return;
-            if (view.counter3CurrentValue < MIN_WITHDRAW_AMOUNT) {
-                showMinWithdrawNotice(MIN_WITHDRAW_AMOUNT);
-                return;
-            }
-            modal.classList.add("show");
-            document.body.classList.add("modal-open");
-            modalNo.focus();
-        });
-
-        function closeConfirmModal() {
-            modal.classList.remove("show");
-            document.body.classList.remove("modal-open");
-        }
-
-        modalNo.addEventListener("click", closeConfirmModal);
-        modal.addEventListener("click", (e) => { if (e.target === modal) closeConfirmModal(); });
-        
-        let finishInProgress = false;
-        modalYes.addEventListener("click", async () => {
-            closeConfirmModal();
-            if (finishInProgress) return;
-            finishInProgress = true;
-            try {
-                const res = await apiAction("finish");
-                if (!res || res.error) {
-                    if (res?.error === "min_withdraw") {
-                        showMinWithdrawNotice(res.minAmount);
-                    } else if (res?.error === "cooldown") {
-                        refreshWithdrawBtn();
-                    } else {
-                        alert("Ошибка соединения. Попробуйте ещё раз.");
-                    }
-                    return;
-                }
-                flashTotalReceived();
-                trackEvent("finish", String(res.finishValue));
-            } finally {
-                finishInProgress = false;
-            }
-        });
-
-        voucherBtn.addEventListener("click", async () => {
-            if (!tonConnectUI || !tonConnectUI.account) {
-                alert("Сначала подключите ваш TON-кошелёк, нажав на кнопку 'Connect Wallet' выше!");
-                return;
-            }
-
-            const walletAddress = tonConnectUI.account.address;
-            trackEvent("voucher", String(view.finishValue));
-            
-            const res = await apiAction("claim-voucher", { walletAddress });
-            
-            if (!res || res.error) {
-                alert("Не удалось подтвердить ваучер. Попробуйте ещё раз.");
-                return;
-            }
-            document.getElementById("modalVoucherAmount").textContent = formatNumber(res.claimedValue || 0, 10);
-            document.getElementById("voucherSuccessModal").classList.add("show");
-            document.body.classList.add("modal-open");
-        });
-
-        document.getElementById("closeVoucherBtn").addEventListener("click", () => {
-            document.getElementById("voucherSuccessModal").classList.remove("show");
-            document.body.classList.remove("modal-open");
-        });
-        document.getElementById("goToChannelBtn").addEventListener("click", () => {
-            if (window.Telegram?.WebApp) window.Telegram.WebApp.openTelegramLink("https://t.me/ubirus");
-            else window.open("https://t.me/ubirus", "_blank");
-            document.getElementById("voucherSuccessModal").classList.remove("show");
-            document.body.classList.remove("modal-open");
-        });
-
-        const news = [
-            { date: "23.10.2026", text: "⚡️Теперь можно подключать WALT для вывода своего Дохода.", isNew: true },
-            { date: "22.10.2026", text: "⚡️Добавлено поле Сумма полученного дохода. Это все Ваши выводы дохода за всё время."},
-            { date: "21.10.2026", text: '⚡️Запуск канала. <a href="https://t.me/ubirus" target="_blank" class="news-link">https://t.me/ubirus</a>'},
-            { date: "13.10.2026", text: "⚡️Запуск проекта. Владимир Владимирович, пожелавший остаться неизвестным, передал Проекту свои 1000🪙 и обещал рост🌱" }
-        ];
-        function renderNews() {
-            const list = document.getElementById("newsList");
-            list.innerHTML = "";
-            for (const item of news) {
-                const li = document.createElement("li");
-                li.className = "news-item" + (item.isNew ? " new" : "");
-                li.innerHTML = `<span class="news-date">${item.date}</span><span class="news-text">${item.text}</span>`;
-                list.appendChild(li);
-            }
-        }
-        renderNews();
-
-        const aboutText = [
-            { type: "p", html: '<strong>Цель проекта</strong>' },
-            { type: "ul", items: ["💡 Обеспечение каждого Безусловным Базовым Доходом.", "💡 Создание благополучного и счастливого Будущего."] },
-            { type: "hr" },
-            { type: "p", html: '<strong>Правила:</strong>' },
-            { type: "ul", items: ["Ваша доля Базового Дохода начисляется автоматически после активации личного счёта.", "Вы можете вывести свою долю.", "Один человек - одна доля Богатства."] },
-            { type: "hr" },
-            { type: "p", html: '<strong>Условия:</strong>' },
-            { type: "ul", items: ["Безусловный Базовый Доход выплачивается всем, а не только нуждающимся.", "Это постоянная выплата, а не разовая акция.", "Не требуется проверки доходов или обязанности поиска работы."] },
-            { type: "hr" },
-            { type: "p", html: '<strong>Важно:</strong> Каждый имеет право быть счастливым! Мы помогаем Вам хотя бы немного не переживать за будущее.' }
-        ];
-        function renderAbout() {
-            const box = document.getElementById("aboutContent");
-            box.innerHTML = "";
-            for (const block of aboutText) {
-                if (block.type === "p") { const p = document.createElement("p"); p.innerHTML = block.html; box.appendChild(p); }
-                else if (block.type === "ul") {
-                    const ul = document.createElement("ul");
-                    for (const item of block.items) { const li = document.createElement("li"); li.textContent = item; ul.appendChild(li); }
-                    box.appendChild(ul);
-                } else if (block.type === "hr") box.appendChild(document.createElement("hr"));
-            }
-        }
-        renderAbout();
-
-        (async function init() {
-            trackEvent("open");
-            const res = await apiPost("/api/progress/get");
-            if (res && !res.error) applyServerState(res);
-            
-            setInterval(async () => {
-                const r = await apiPost("/api/progress/get");
-                if (r && !r.error) applyServerState(r);
-            }, 30000);
-        })();
+        <script src="app.js"></script>
     </script>
 </body>
 </html>
