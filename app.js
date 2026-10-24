@@ -13,6 +13,27 @@ if (tg) {
 }
 
 // ============================================================
+// TON CONNECT INIT
+// ============================================================
+let tonConnectUI = null;
+try {
+    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+        manifestUrl: 'https://ubiru-backend.a-vladimirtsev.workers.dev/tonconnect-manifest.json',
+        buttonRootId: 'ton-connect-button'
+    });
+
+    tonConnectUI.onStatusChange(wallet => {
+        if (wallet) {
+            console.log("✅ Кошелёк подключен!", wallet.account.address);
+        } else {
+            console.log("❌ Кошелёк отключен.");
+        }
+    });
+} catch (e) {
+    console.error("Ошибка инициализации TON Connect:", e);
+}
+
+// ============================================================
 // API
 // ============================================================
 const API_BASE = "https://ubiru-backend.a-vladimirtsev.workers.dev";
@@ -25,12 +46,18 @@ async function apiPost(path, payload = {}, options = {}) {
             body: JSON.stringify({ ...payload, initData }),
             ...(options.keepalive ? { keepalive: true } : {})
         });
-        if (!res.ok) throw new Error("HTTP " + res.status);
+        if (!res.ok && res.status !== 400 && res.status !== 429) throw new Error("HTTP " + res.status);
         return await res.json();
     } catch (e) {
         console.warn("API error:", path, e);
         return null;
     }
+}
+
+async function apiAction(action, extraPayload = {}) {
+    const res = await apiPost("/api/progress/" + action, extraPayload);
+    if (res && !res.error) applyServerState(res);
+    return res;
 }
 
 function trackEvent(event, extra = "") {
@@ -66,13 +93,34 @@ let SERVER_PROGRESS = {
     totalReceived: 0
 };
 
+function applyServerState(s) {
+    SERVER_PROGRESS.withdrawn = !!s.withdrawn;
+    SERVER_PROGRESS.finishValue = (typeof s.finishValue === "number") ? s.finishValue : null;
+    SERVER_PROGRESS.cooldownUntil = s.cooldownUntil || 0;
+    SERVER_PROGRESS.totalReceived = s.totalReceived || 0;
+
+    if (s.counter3Active) {
+        counter3.baseValue = Number(s.counter3CurrentValue) || 0;
+        counter3.startDate = Date.now();
+        counter3.active    = true;
+        counter3.perSecond = COUNTER3_NEW_SPEED;
+    } else {
+        counter3.baseValue = 0;
+        counter3.startDate = null;
+        counter3.active    = false;
+        counter3.perSecond = COUNTER3_NEW_SPEED;
+    }
+
+    renderTotalReceived();
+    refreshWithdrawBtn();
+    restoreFinishBtn();
+}
+
 async function loadProgress() {
     const data = await apiPost("/api/progress/get");
     if (!data) return;
-
-    const serverTotal = (typeof data.totalReceived === "number" && data.totalReceived >= 0)
-        ? data.totalReceived
-        : 0;
+    
+    const serverTotal = (typeof data.totalReceived === "number" && data.totalReceived >= 0) ? data.totalReceived : 0;
     const localTotal = readLocalTotal();
 
     SERVER_PROGRESS = {
@@ -83,7 +131,6 @@ async function loadProgress() {
         totalReceived:        Math.max(serverTotal, localTotal)
     };
 
-    // ИСПРАВЛЕНИЕ: берем текущее значение с сервера и запускаем тиканье
     if (data.counter3Active) {
         counter3.baseValue = Number(data.counter3CurrentValue) || 0;
         counter3.startDate = Date.now();
@@ -125,6 +172,7 @@ async function saveProgress(keepalive = false) {
 // ============================================================
 const COUNTER3_SPEED_VERSION = "v3";
 const COUNTER3_NEW_SPEED = 0.00000000000003237503;
+const MIN_WITHDRAW_AMOUNT = 0.00000001;
 
 const counters = [
     {
@@ -146,7 +194,7 @@ const counters = [
         baseValue: 0,
         startDate: null,
         perSecond: COUNTER3_NEW_SPEED,
-        digits: 10, active: false, id: "counter3" // ИСПРАВЛЕНИЕ: цифр после запятой теперь 10
+        digits: 10, active: false, id: "counter3"
     }
 ];
 
@@ -208,7 +256,6 @@ function update() {
     renderDailyGain();
 }
 
-// === ОТРИСОВКА И АНИМАЦИЯ НАКОПЛЕННОЙ СУММЫ ===
 const counterTotalEl = document.getElementById("counterTotal");
 function renderTotalReceived() {
     if (!counterTotalEl) return;
@@ -227,16 +274,10 @@ function flashTotalReceived() {
 setInterval(update, 250);
 update();
 
-// ============================================================
-// ПЕРИОДИЧЕСКОЕ СОХРАНЕНИЕ counter3 (раз в 20 сек)
-// ============================================================
 setInterval(() => {
     if (counter3.active) saveProgress();
 }, 20 * 1000);
 
-// ============================================================
-// СОХРАНЕНИЕ ПРИ УХОДЕ ИЗ MINI APP
-// ============================================================
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && counter3.active) {
         saveProgress(true);
@@ -370,7 +411,6 @@ finishBtn.addEventListener("click", () => {
     openConfirmModal();
 });
 
-// === ЗАЩИТА ОТ ДВОЙНОГО ВЫЗОВА ===
 let finishInProgress = false;
 
 async function performFinish() {
@@ -389,8 +429,7 @@ async function performFinish() {
         SERVER_PROGRESS.finishValue   = finalValue;
         SERVER_PROGRESS.cooldownUntil = Date.now() + COOLDOWN_MS;
 
-        SERVER_PROGRESS.totalReceived =
-            (SERVER_PROGRESS.totalReceived || 0) + finalValue;
+        SERVER_PROGRESS.totalReceived = (SERVER_PROGRESS.totalReceived || 0) + finalValue;
 
         await saveProgress();
 
@@ -418,9 +457,59 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modal.classList.contains("show")) closeConfirmModal();
 });
 
-voucherBtn.addEventListener("click", () => {
-    trackEvent("voucher", voucherBtn.textContent);
-    console.log("Получен ваучер на сумму", voucherBtn.textContent);
+// ============================================================
+// ОБРАБОТКА КНОПКИ ВАУЧЕРА
+// ============================================================
+voucherBtn.addEventListener("click", async () => {
+    if (voucherBtn.disabled) return;
+    
+    if (SERVER_PROGRESS.finishValue < MIN_WITHDRAW_AMOUNT) {
+        alert(`Сумма слишком мала для вывода. Минимум: ${MIN_WITHDRAW_AMOUNT}`);
+        return;
+    }
+
+    if (!tonConnectUI || !tonConnectUI.account) {
+        alert("Сначала подключите ваш TON-кошелек!");
+        return;
+    }
+
+    const walletAddress = tonConnectUI.account.address;
+    voucherBtn.disabled = true;
+    const originalText = voucherBtn.textContent;
+    voucherBtn.textContent = "Обработка...";
+
+    try {
+        const res = await apiAction("claim-voucher", { walletAddress });
+        
+        if (!res || res.error) {
+            alert("Ошибка при получении ваучера. Попробуйте позже.");
+            return;
+        }
+
+        document.getElementById("modalVoucherAmount").textContent = formatNumber(res.claimedValue || 0, counter3.digits);
+        document.getElementById("voucherSuccessModal").classList.add("show");
+        document.body.classList.add("modal-open");
+        hideVoucherBtn();
+
+    } catch (e) {
+        console.error(e);
+        alert("Ошибка соединения.");
+    } finally {
+        voucherBtn.disabled = false;
+        voucherBtn.textContent = originalText;
+    }
+});
+
+document.getElementById("closeVoucherBtn").addEventListener("click", () => {
+    document.getElementById("voucherSuccessModal").classList.remove("show");
+    document.body.classList.remove("modal-open");
+});
+
+document.getElementById("goToChannelBtn").addEventListener("click", () => {
+    if (window.Telegram?.WebApp) window.Telegram.WebApp.openTelegramLink("https://t.me/ubirus");
+    else window.open("https://t.me/ubirus", "_blank");
+    document.getElementById("voucherSuccessModal").classList.remove("show");
+    document.body.classList.remove("modal-open");
 });
 
 // ============================================================
